@@ -1,0 +1,11 @@
+# Misc Files And Directories
+other/
+data/
+models/
+.venv/
+flight-data-visualizer.py
+test.py
+
+# Compiled Bytecode
+__pycache__/
+.pyc
