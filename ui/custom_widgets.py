@@ -1,10 +1,13 @@
 import core
 import os
-import pyvista as pv
+import ui
+import numpy as np
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
+
+import pyvista as pv
 from pyvistaqt import QtInteractor
 
 class FileDropArea(QtWidgets.QLabel):
@@ -94,20 +97,73 @@ class FileDropArea(QtWidgets.QLabel):
 
 class VisualizerArea(QtWidgets.QWidget):
     """The 3D visualizer area for displaying vector data.
+
+    Attributes:
+    - _main_mesh: The craft mesh currently displayed on the visualizer.
+    - _drawn_vectors: The vectors that are currently displayed on the visualizer.
     """
-    
+    _main_mesh: pv.DataObject | None
+    _drawn_vectors: list[pv.PolyData]
+
     def __init__(self) -> None:
         """Initializes the visualizer area.
         """
         super().__init__()
         
+        self._main_mesh = None
+        self._drawn_vectors = []
+
         self.main_layout = QtWidgets.QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.main_layout)
 
         self.plotter = QtInteractor()
 
         self.main_layout.addWidget(self.plotter.interactor)
 
         self.plotter.add_axes()
-        self.plotter.show_grid()
         self.plotter.set_background("white")
+    
+    def _draw_single_labeled_origin_vector(self, tip_location: tuple[float, float, float], 
+                                           name: str, colour: tuple[float, float, float] | None = None) -> None:
+        """Draws an origin vector with a tip at <tip_location>, 
+        a label with <name> and the vector's value at the tip, and <colour> as the colour.
+        If <name> corresponds to a predetermined colour from <ui.LABEL_TO_COLOUR>, a None
+        colour may be selected, and the predetermined colour will instead be used.
+
+        If the vector would have no length (tip lies on the origin), no vector will be drawn.
+        """
+        if tip_location == (0, 0, 0):
+            return
+
+        vector = np.array(tip_location)
+        length = float(np.linalg.norm(vector))
+
+        direction = vector / length
+
+        vector_arrow_mesh = pv.Arrow(
+            start=(0, 0, 0),
+            direction=direction,
+            tip_length=ui.VECTOR_TIP_LENGTH,
+            tip_radius=(0.1 * ui.VECTOR_THICKNESS),
+            tip_resolution=ui.VECTOR_RESOLUTION,
+            shaft_radius=(0.05 * ui.VECTOR_THICKNESS),
+            shaft_resolution=ui.VECTOR_RESOLUTION,
+            scale=length
+        )
+
+        if not colour and name in ui.LABEL_TO_COLOUR:
+            colour = ui.LABEL_TO_COLOUR[name]
+
+        if colour:
+            self._drawn_vectors.append(self.plotter.add_mesh(vector_arrow_mesh, color=colour))
+            self.plotter.add_point_labels(
+                tip_location,
+                [(name + '\n' + str(tip_location).replace('(', '<').replace(')', '>'))],
+                italic=False,
+                font_size=ui.LABEL_SIZE,
+                text_color='black',
+                # render_points=False,
+                always_visible=True
+            )
+            # self.plotter.render()
