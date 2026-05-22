@@ -1,4 +1,5 @@
 import core
+import core.data_processor
 import os
 import ui
 import numpy as np
@@ -124,19 +125,18 @@ class VisualizerArea(QtWidgets.QWidget):
         self.plotter.add_axes()
         self.plotter.set_background("white")
     
-    def _draw_single_labeled_origin_vector(self, tip_location: tuple[float, float, float], 
-                                           name: str, colour: tuple[float, float, float] | None = None) -> None:
-        """Draws an origin vector with a tip at <tip_location>, 
-        a label with <name> and the vector's value at the tip, and <colour> as the colour.
-        If <name> corresponds to a predetermined colour from <ui.LABEL_TO_COLOUR>, a None
-        colour may be selected, and the predetermined colour will instead be used.
+    def _draw_single_labeled_origin_vector(self, data_vector: core.data_processor.DataVector) -> None:
+        """Draws an origin vector with a tip at <data_vector.data_value>, 
+        a label with <data_vector.name> and the vector's value at the tip, and <data_vector.colour> as the colour.
 
         If the vector would have no length (tip lies on the origin), no vector will be drawn.
+        If no colour has been defined, the vector will not be drawn.
         """
-        if tip_location == (0, 0, 0):
+        vector_value, name, colour = data_vector.get_attributes()
+        if vector_value == (0, 0, 0):
             return
 
-        vector = np.array(tip_location)
+        vector = np.array(vector_value)
         length = float(np.linalg.norm(vector))
 
         direction = vector / length
@@ -152,18 +152,15 @@ class VisualizerArea(QtWidgets.QWidget):
             scale=length
         )
 
-        if not colour and name in ui.LABEL_TO_COLOUR:
-            colour = ui.LABEL_TO_COLOUR[name]
-
         if colour:
             self._drawn_vectors.append(self.plotter.add_mesh(vector_arrow_mesh, color=colour))
             self.plotter.add_point_labels(
-                tip_location,
-                [(name + '\n' + str(tip_location).replace('(', '<').replace(')', '>'))],
+                vector_value,
+                [(name + '\n' + str(vector_value).replace('(', '<').replace(')', '>'))],
                 italic=False,
                 font_size=ui.LABEL_SIZE,
                 text_color='black',
-                # render_points=False,
                 always_visible=True
             )
-            # self.plotter.render()
+    
+    # def draw_labeled_origin_vectors(self, vectors: dict[str, tuple[float, float, float]]) -> None:
