@@ -124,6 +124,7 @@ class VisualizerArea(QtWidgets.QWidget):
 
         self.main_layout.addWidget(self.plotter.interactor)
 
+        self._draw_craft_model()
         self.plotter.add_axes()
         self.plotter.set_background("white")
     
@@ -180,6 +181,13 @@ class VisualizerArea(QtWidgets.QWidget):
         self._drawn_vectors.clear()
         self.plotter.clear_point_labels()
     
+    def _draw_craft_model(self) -> None:
+        """Draws the craft model at the origin.
+        """
+        craft_model = 'diamond-2'
+        craft_mesh = pv.read('./assets/models/' + craft_model + '.stl')
+        self._craft_model = self.plotter.add_mesh(craft_mesh, style='wireframe', line_width=2)
+
     def update_vector_display(self, vectors: list[core.data_processor.DataVector]) -> None:
         """Erases all vectors already drawn on the display and replaces them with <vectors>.
         """
