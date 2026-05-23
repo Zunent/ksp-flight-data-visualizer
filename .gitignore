@@ -2,6 +2,7 @@
 other/
 data/
 models/
+!assets/models
 .venv/
 flight-data-visualizer.py
 test.py
