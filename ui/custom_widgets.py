@@ -6,16 +6,16 @@ import numpy as np
 from typing import Any
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 
 import pyvista as pv
 from pyvistaqt import QtInteractor
 
-
 class FileDropArea(QtWidgets.QLabel):
     """A space on the interface for the user to drop in the data file for processing.
     """
+    file_dropped = pyqtSignal(str)
 
     def __init__(self) -> None:
         """Initializes a FileDropArea widget.
@@ -91,6 +91,7 @@ class FileDropArea(QtWidgets.QLabel):
             # We have already ensured there is only one file in the event.
             first_file = file_paths[0]
             a0.acceptProposedAction()
+            self.file_dropped.emit(first_file)
         else:
             a0.ignore()
         
