@@ -3,6 +3,7 @@ import core.data_processor
 import os
 import ui
 import numpy as np
+from typing import Any
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
@@ -10,6 +11,7 @@ from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 
 import pyvista as pv
 from pyvistaqt import QtInteractor
+
 
 class FileDropArea(QtWidgets.QLabel):
     """A space on the interface for the user to drop in the data file for processing.
@@ -104,7 +106,7 @@ class VisualizerArea(QtWidgets.QWidget):
     - _drawn_vectors: The vectors that are currently displayed on the visualizer.
     """
     _main_mesh: pv.DataObject | None
-    _drawn_vectors: list[pv.PolyData]
+    _drawn_vectors: list[Any]
 
     def __init__(self) -> None:
         """Initializes the visualizer area.
@@ -163,4 +165,23 @@ class VisualizerArea(QtWidgets.QWidget):
                 always_visible=True
             )
     
-    # def draw_labeled_origin_vectors(self, vectors: dict[str, tuple[float, float, float]]) -> None:
+    def _draw_labeled_origin_vectors(self, vectors: list[core.data_processor.DataVector]) -> None:
+        """Draws a list of DataVectors to the visualizer area.
+        """
+        for current_vector in vectors:
+            self._draw_single_labeled_origin_vector(current_vector)
+    
+    def _clear_drawn_vectors(self) -> None:
+        """Erases the vectors that have been drawn and placed into <self._drawn_vectors>.
+        """
+        for actor in self._drawn_vectors:
+            self.plotter.remove_actor(actor)
+        
+        self._drawn_vectors.clear()
+        self.plotter.clear_point_labels()
+    
+    def update_vector_display(self, vectors: list[core.data_processor.DataVector]) -> None:
+        """Erases all vectors already drawn on the display and replaces them with <vectors>.
+        """
+        self._clear_drawn_vectors()
+        self._draw_labeled_origin_vectors(vectors)
