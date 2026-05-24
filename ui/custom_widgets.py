@@ -180,7 +180,14 @@ class VisualizerArea(QtWidgets.QWidget):
             self.plotter.remove_actor(actor)
         
         self._drawn_vectors.clear()
-        self.plotter.clear_point_labels()
+        
+        # For whatever reason pyvista REALLY doesn't like it when
+        # clear_point_labels is called when there aren't point labels.
+        # There's no way to check for them from what I've found so.
+        try:
+            self.plotter.clear_point_labels()
+        except Exception:
+            pass
     
     def _draw_craft_model(self) -> None:
         """Draws the craft model at the origin.
@@ -194,3 +201,36 @@ class VisualizerArea(QtWidgets.QWidget):
         """
         self._clear_drawn_vectors()
         self._draw_labeled_origin_vectors(vectors)
+
+class ScrubberBar(QtWidgets.QWidget):
+    """A zone to control the playback and scrubbing of flight data visualization.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.main_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+        self.setLayout(self.main_layout)
+
+        # Rewind button to jump back to start of data playback.
+        self.rewind_button = QtWidgets.QPushButton()
+        self.main_layout.addWidget(self.rewind_button)
+
+        # Play button to begin regular playback of data.
+        self.play_button = QtWidgets.QPushButton()
+        self.play_button.setCheckable(True)
+        self.play_button.setChecked(False)
+        self.main_layout.addWidget(self.play_button)
+
+        # Slider for tracking playback progress and scrub through data.
+        self.playback_slider = QtWidgets.QSlider(Qt.Horizontal)
+        self.playback_slider.setRange(0, 100)
+        self.playback_slider.setValue(0)
+        self.main_layout.addWidget(self.playback_slider)
+
+        # Label to indicate data index.
+        self.playback_position_indicator = QtWidgets.QLabel()
+        self.playback_position_indicator.setText(str(self.playback_slider.value()))
+        self.main_layout.addWidget(self.playback_position_indicator)
