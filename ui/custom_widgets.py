@@ -234,3 +234,22 @@ class ScrubberBar(QtWidgets.QWidget):
         self.playback_position_indicator = QtWidgets.QLabel()
         self.playback_position_indicator.setText(str(self.playback_slider.value()))
         self.main_layout.addWidget(self.playback_position_indicator)
+
+    def _on_toggle_pause(self) -> None:
+        """Triggered when the pause/play button is pressed.
+        """
+
+    def _force_pause(self) -> None:
+        """Forces the play status back to the paused state.
+        Triggered/used when playback gets jumped back to start, either when
+        there is a new data file inputted or the rewind button is pressed.
+        """
+    
+    def _on_rewind_press(self) -> None:
+        """Triggered when the rewind button is pressed.
+        """
+    
+    def _on_playback_location_update(self) -> None:
+        """Triggered when the playback slider's position is updated.
+        """
+    
