@@ -102,7 +102,7 @@ class FileDropArea(QtWidgets.QLabel):
 class VisualizerArea(QtWidgets.QWidget):
     """The 3D visualizer area for displaying vector data.
 
-    Attributes:
+    Private Attributes:
     - _main_mesh: The craft mesh currently displayed on the visualizer.
     - _drawn_vectors: The vectors that are currently displayed on the visualizer.
     """
@@ -204,6 +204,9 @@ class VisualizerArea(QtWidgets.QWidget):
 
 class ScrubberBar(QtWidgets.QWidget):
     """A zone to control the playback and scrubbing of flight data visualization.
+
+    Private Attributes:
+    - _is_paused: Whether the data playback is paused.
     """
 
     def __init__(self) -> None:
@@ -223,6 +226,7 @@ class ScrubberBar(QtWidgets.QWidget):
         self.play_button.setCheckable(True)
         self.play_button.setChecked(False)
         self.main_layout.addWidget(self.play_button)
+        self._is_paused = True
 
         # Slider for tracking playback progress and scrub through data.
         self.playback_slider = QtWidgets.QSlider(Qt.Horizontal)
@@ -239,10 +243,12 @@ class ScrubberBar(QtWidgets.QWidget):
         """Triggered when the pause/play button is pressed.
         """
 
-    def _force_pause(self) -> None:
-        """Forces the play status back to the paused state.
-        Triggered/used when playback gets jumped back to start, either when
-        there is a new data file inputted or the rewind button is pressed.
+    def _on_unpause(self) -> None:
+        """Forces the play status to the unpaused state.
+        """
+
+    def _on_pause(self) -> None:
+        """Forces the play status to the paused state.
         """
     
     def _on_rewind_press(self) -> None:
