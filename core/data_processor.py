@@ -138,6 +138,11 @@ class DataFile():
             
             self._processed_dataframe[vector_label] = compiled_datavectors
 
+    def get_time_indexes(self) -> list[float]:
+        """Returns a list of all indexes from <self._processed_dataframe>.
+        """
+        return self._processed_dataframe.index.tolist()
+
 class DataVector():
     """A vector that contains label and colour information for displaying.
     An origin vector, so the tail is assumed to be at the origin.
