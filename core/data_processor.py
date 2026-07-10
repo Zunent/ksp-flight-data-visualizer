@@ -49,7 +49,7 @@ class DataFile():
         """
         match self._file_path.suffix:
             case '.csv':
-                return pd.read_csv(self._file_path)
+                return pd.read_csv(self._file_path, index_col=0)
             case _:
                 raise ValueError(f"Unsupported file type: {self._file_path.suffix}")
 
@@ -142,6 +142,17 @@ class DataFile():
         """Returns a list of all indexes from <self._processed_dataframe>.
         """
         return self._processed_dataframe.index.tolist()
+    
+    def get_vectors_at_index(self, time_index: float) -> list[DataVector] | None:
+        """Returns a list of vectors at row <time_index> of <self._processed_dataframe> if it is a valid index.
+        Otherwise returns None.
+        """
+        if time_index not in self._processed_dataframe.index:
+            return None
+        else:
+            row_values = self._processed_dataframe.loc[time_index]
+            filtered_vector_row_values = [x for x in row_values if isinstance(x, DataVector)]
+            return filtered_vector_row_values
 
 class DataVector():
     """A vector that contains label and colour information for displaying.
