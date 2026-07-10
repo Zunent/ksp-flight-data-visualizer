@@ -6,7 +6,7 @@ import numpy as np
 from typing import Any
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QElapsedTimer, pyqtSignal
 from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 
 import pyvista as pv
@@ -207,10 +207,25 @@ class ScrubberBar(QtWidgets.QWidget):
 
     Private Attributes:
     - _is_paused: Whether the data playback is paused.
+    - _polling_interval: Polling interval for the async playback in ms.
+    - _loaded_data: The DataFile the visualizer currently has loaded. None if no data has been loaded.
+    - _time_indexes: List of indexes from self._loaded_data. Empty list if no data has been loaded.
+    - _playback_index: Index of where the playback currently is in the DataFile.
     """
+    _is_paused: bool
+    _polling_interval: int
+    _loaded_data: core.data_processor.DataFile | None
+    _time_indexes: list[float]
+    _playback_index: int
 
-    def __init__(self) -> None:
+    def __init__(self, polling_interval: int) -> None:
+        """Initializes a Scrubber Bar with a playback slider, rewind button, 
+        play/pause button, and a position indicator.
+        
+        Sets playback polling interval to <polling_interval> ms.
+        """
         super().__init__()
+        self._polling_interval = polling_interval
 
         self.main_layout = QtWidgets.QHBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -225,13 +240,19 @@ class ScrubberBar(QtWidgets.QWidget):
         self.play_button = QtWidgets.QPushButton()
         self.play_button.setCheckable(True)
         self.play_button.setChecked(False)
+        self.play_button.toggled.connect(self._on_toggle_pause)
         self.main_layout.addWidget(self.play_button)
+        # Default is paused.
         self._is_paused = True
 
         # Slider for tracking playback progress and scrub through data.
         self.playback_slider = QtWidgets.QSlider(Qt.Horizontal)
         self.playback_slider.setRange(0, 100)
         self.playback_slider.setValue(0)
+        self._playback_index = 0
+        self.playback_slider.valueChanged.connect(self._on_playback_location_update)
+        self.playback_slider.sliderPressed.connect(self._on_playback_bar_pressed)
+        self.playback_slider.sliderReleased.connect(self._on_playback_bar_released)
         self.main_layout.addWidget(self.playback_slider)
 
         # Label to indicate data index.
@@ -239,23 +260,105 @@ class ScrubberBar(QtWidgets.QWidget):
         self.playback_position_indicator.setText(str(self.playback_slider.value()))
         self.main_layout.addWidget(self.playback_position_indicator)
 
-    def _on_toggle_pause(self) -> None:
+        # No data loaded by default.
+        self._loaded_data = None
+        self._time_indexes = []
+
+        # Setup the QTimer for polling
+        self.poll_timer = QTimer(self)
+        self.poll_timer.timeout.connect(self._poll_data)
+        self.poll_timer.setInterval(self._polling_interval)
+        
+        # Setup a stopwatch to track real-world elapsed time
+        self.elapsed_timer = QElapsedTimer()
+        
+        # Keeps track of where the playback time was when the user last paused
+        self._playback_time_offset = 0.0
+
+    def load_data(self, new_datafile: core.data_processor.DataFile) -> None:
+        """Sets <self._loaded_data> to <new_datafile>.
+        """
+        self._loaded_data = new_datafile
+        self._time_indexes = self._loaded_data.get_time_indexes()
+        self.playback_slider.setValue(0)
+        self._playback_time_offset = 0.0
+        self._playback_index = 0
+        self.playback_slider.setRange(0, len(self._time_indexes) - 1)
+
+    def _on_toggle_pause(self, is_checked: bool) -> None:
         """Triggered when the pause/play button is pressed.
         """
+        if is_checked:
+            self._try_unpause()
+        else:
+            self._try_pause()
 
-    def _on_unpause(self) -> None:
-        """Forces the play status to the unpaused state.
+    def _try_unpause(self) -> None:
+        """Tries to set the play status to the unpaused state.
+        Playback will not be unpaused if self._loaded_data is not a DataFile or self._time_indexes is empty.
         """
-
-    def _on_pause(self) -> None:
+        if self._loaded_data and self._time_indexes:
+            self._is_paused = False
+            self.elapsed_timer.start()
+            self.poll_timer.start()
+    
+    def _try_pause(self) -> None:
         """Forces the play status to the paused state.
         """
+        self._is_paused = True
+        self.poll_timer.stop()
+        if self._loaded_data and self._time_indexes:
+            self._playback_time_offset = self._time_indexes[self._playback_index]
     
     def _on_rewind_press(self) -> None:
         """Triggered when the rewind button is pressed.
         """
     
-    def _on_playback_location_update(self) -> None:
+    def _on_playback_location_update(self, new_value: int) -> None:
         """Triggered when the playback slider's position is updated.
         """
+        if not self._loaded_data:
+            self.playback_position_indicator.setText(str(new_value))
+        else:
+            self.playback_position_indicator.setText(str(round(self._time_indexes[new_value], 1)))
     
+    def _on_playback_bar_pressed(self) -> None:
+        """Triggered when the user starts moving the playback bar.
+        """
+        self.poll_timer.stop()
+
+    def _on_playback_bar_released(self) -> None:
+        """Triggered when the user releases the playback bar.
+        """
+        self._playback_index = self.playback_slider.value()
+
+        if self._loaded_data and self._time_indexes:
+            self._playback_time_offset = self._time_indexes[self._playback_index]
+        if not self._is_paused:
+            self._try_unpause()
+
+    def _poll_data(self) -> None:
+        """Runs every polling interval. Syncs the data index with real elapsed time.
+
+        Preconditions:
+         - self._loaded_data is not None
+         - self._time_indexes is not None
+        """
+        current_playback_time = self._playback_time_offset + (self.elapsed_timer.elapsed() / 1000.0)
+        index_changed = False
+        while self._playback_index < len(self._time_indexes) - 1:
+            next_timestamp = self._time_indexes[self._playback_index + 1]
+            
+            if current_playback_time >= next_timestamp:
+                self._playback_index += 1
+                index_changed = True
+            else:
+                break
+        
+        # Check if at the end of playback.
+        if self._playback_index >= len(self._time_indexes) - 1:
+            self.play_button.setChecked(False)
+        
+        # Update playback bar if needed.
+        if index_changed:
+            self.playback_slider.setValue(self._playback_index)
