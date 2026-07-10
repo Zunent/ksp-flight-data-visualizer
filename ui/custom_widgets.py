@@ -234,6 +234,7 @@ class ScrubberBar(QtWidgets.QWidget):
 
         # Rewind button to jump back to start of data playback.
         self.rewind_button = QtWidgets.QPushButton()
+        self.rewind_button.pressed.connect(self._on_rewind_press)
         self.main_layout.addWidget(self.rewind_button)
 
         # Play button to begin regular playback of data.
@@ -280,9 +281,8 @@ class ScrubberBar(QtWidgets.QWidget):
         """
         self._loaded_data = new_datafile
         self._time_indexes = self._loaded_data.get_time_indexes()
-        self.playback_slider.setValue(0)
-        self._playback_time_offset = 0.0
-        self._playback_index = 0
+        # Reset playback to the start.
+        self._on_rewind_press()
         self.playback_slider.setRange(0, len(self._time_indexes) - 1)
 
     def _on_toggle_pause(self, is_checked: bool) -> None:
@@ -313,6 +313,10 @@ class ScrubberBar(QtWidgets.QWidget):
     def _on_rewind_press(self) -> None:
         """Triggered when the rewind button is pressed.
         """
+        self.play_button.setChecked(False)
+        self.playback_slider.setValue(0)
+        self._playback_time_offset = 0.0
+        self._playback_index = 0
     
     def _on_playback_location_update(self, new_value: int) -> None:
         """Triggered when the playback slider's position is updated.
