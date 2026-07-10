@@ -49,7 +49,7 @@ class DataFile():
         """
         match self._file_path.suffix:
             case '.csv':
-                return pd.read_csv(self._file_path)
+                return pd.read_csv(self._file_path, index_col=0)
             case _:
                 raise ValueError(f"Unsupported file type: {self._file_path.suffix}")
 
