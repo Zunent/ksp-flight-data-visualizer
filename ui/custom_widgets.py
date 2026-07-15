@@ -149,6 +149,7 @@ class VisualizerArea(QtWidgets.QWidget):
         # Add ability to process vector length so that longer and shorter vectors can be
         # viewed at the same time
         corrected_length = ui.VECTOR_SCALING_METHODS[ui.SELECTED_VECTOR_SCALING_METHOD](length) * ui.OVERALL_SCALE
+        corrected_vector = direction * corrected_length
 
         # Because pyvista is stupid and just scales the entire arrow to the magnitute
         # of the vector, we must divide by length to get consistent arrows.
@@ -172,7 +173,7 @@ class VisualizerArea(QtWidgets.QWidget):
             self._drawn_actors.append(arrow_actor)
 
             label_actor = self.plotter.add_point_labels(
-                vector_value,
+                corrected_length,
                 [(name + '\n' + str(data_vector))],
                 italic=False,
                 font_size=ui.LABEL_SIZE,
