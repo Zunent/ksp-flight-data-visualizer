@@ -173,7 +173,7 @@ class VisualizerArea(QtWidgets.QWidget):
             self._drawn_actors.append(arrow_actor)
 
             label_actor = self.plotter.add_point_labels(
-                corrected_length,
+                corrected_vector,
                 [(name + '\n' + str(data_vector))],
                 italic=False,
                 font_size=ui.LABEL_SIZE,
