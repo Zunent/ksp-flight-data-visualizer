@@ -12,6 +12,15 @@ from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 import pyvista as pv
 from pyvistaqt import QtInteractor
 
+def create_horizontal_separator() -> QtWidgets.QFrame:
+        """Returns a new horizontal bar.
+        """
+        bar = QtWidgets.QFrame()
+        bar.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        bar.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        bar.setObjectName('horizontalBar')
+        return bar
+
 class FileDropArea(QtWidgets.QLabel):
     """A space on the interface for the user to drop in the data file for processing.
     """
@@ -389,3 +398,47 @@ class ScrubberBar(QtWidgets.QWidget):
         # Update playback bar if needed.
         if index_changed:
             self.playback_slider.setValue(self._playback_index)
+
+class SettingsWidget(QtWidgets.QWidget):
+    """A zone for editing settings related to the playback of data.
+    """
+
+    def __init__(self) -> None:
+        """Initializes the settings widget.
+        """
+        super().__init__()
+
+        main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(main_layout)
+
+        main_layout.addWidget(create_horizontal_separator())
+
+        scaling_method_label = QtWidgets.QLabel("Scaling Method")
+        self.scaling_method_dropdown = QtWidgets.QComboBox()
+        main_layout.addWidget(scaling_method_label)
+        main_layout.addWidget(self.scaling_method_dropdown)
+
+        main_layout.addWidget(create_horizontal_separator())
+
+        scale_modifier_label = QtWidgets.QLabel("Scale Modifier")
+        self.scale_modifier_input = QtWidgets.QWidget()
+        scale_modifier_layout = QtWidgets.QHBoxLayout()
+        self.scale_modifier_input.setLayout(scale_modifier_layout)
+        main_layout.addWidget(scale_modifier_label)
+        main_layout.addWidget(self.scale_modifier_input)
+
+        self.scale_modifier_spinbox = QtWidgets.QDoubleSpinBox()
+        self.scale_modifier_spinbox.setMinimum(0)
+        self.scale_modifier_spinbox.setSingleStep(0.1)
+        scale_modifier_layout.addWidget(self.scale_modifier_spinbox)
+        self.scale_modifier_confirmation = QtWidgets.QPushButton("Confirm")
+        scale_modifier_layout.addWidget(self.scale_modifier_confirmation)
+
+        main_layout.addWidget(create_horizontal_separator())
+
+        craft_mesh_label = QtWidgets.QLabel("Craft Mesh")
+        self.craft_mesh_dropdown = QtWidgets.QComboBox()
+        main_layout.addWidget(craft_mesh_label)
+        main_layout.addWidget(self.craft_mesh_dropdown)
+
+        main_layout.addWidget(create_horizontal_separator())
