@@ -133,15 +133,16 @@ class VisualizerArea(QtWidgets.QWidget):
         """Draws an origin vector with a tip at <data_vector.data_value>, 
         a label with <data_vector.name> and the vector's value at the tip, and <data_vector.colour> as the colour.
 
-        If the vector would have no length (tip lies on the origin), no vector will be drawn.
+        If the vector would have little to no length (tip lies on the origin), no vector will be drawn.
         If no colour has been defined, the vector will not be drawn.
         """
         vector_value, name, colour = data_vector.get_attributes()
-        if vector_value == (0, 0, 0):
-            return
 
         vector = np.array(vector_value)
         length = float(np.linalg.norm(vector))
+
+        if length < ui.VECTOR_LENGTH_THRESHOLD:
+            return
 
         direction = vector / length
 
