@@ -23,8 +23,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.main_layout.setSpacing(0)
         self.main_widget.setLayout(self.main_layout)
         
+        self.left_layout = QtWidgets.QVBoxLayout()
+        self.left_widget = QtWidgets.QWidget()
+        self.left_widget.setLayout(self.left_layout)
+        self.main_layout.addWidget(self.left_widget)
+
         self.visualizer = cw.VisualizerArea()
-        self.main_layout.addWidget(self.visualizer)
+        self.left_layout.addWidget(self.visualizer)
+
+        self.playback_control = cw.ScrubberBar(100)
+        self.playback_control.playback_updated.connect(self._on_playback_update)
+        self.left_layout.addWidget(self.playback_control)
 
         self.drop_area = cw.FileDropArea()
         self.main_layout.addWidget(self.drop_area)
@@ -36,3 +45,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """Return a formatted DataFile processed from a dropped file.
         """
         self._datafile = data_processor.DataFile(file_path)
+        self.playback_control.load_data(self._datafile)
+    
+    def _on_playback_update(self, new_time_index: float) -> None:
+        """Updates the visualizer area to the new time index from the playback bar.
+        """
+        if self._datafile:
+            new_vectors = self._datafile.get_vectors_at_index(new_time_index)
+            self.visualizer.update_vector_display(new_vectors)
