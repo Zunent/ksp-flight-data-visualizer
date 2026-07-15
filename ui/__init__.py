@@ -10,3 +10,5 @@ LABEL_SIZE = 20
 LABEL_TO_COLOUR = {
     'aero': (129, 181, 230)
 }
+
+SELECTED_CRAFT_MODEL = 'diamond-2'

@@ -196,7 +196,7 @@ class VisualizerArea(QtWidgets.QWidget):
     def _draw_craft_model(self) -> None:
         """Draws the craft model at the origin.
         """
-        craft_model = 'diamond-2'
+        craft_model = ui.SELECTED_CRAFT_MODEL
         craft_mesh = pv.read('./assets/models/' + craft_model + '.stl')
         self._craft_model = self.plotter.add_mesh(craft_mesh, style='wireframe', line_width=2)
 
