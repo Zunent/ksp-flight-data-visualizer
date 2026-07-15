@@ -146,11 +146,15 @@ class VisualizerArea(QtWidgets.QWidget):
 
         direction = vector / length
 
+        # Add ability to process vector length so that longer and shorter vectors can be
+        # viewed at the same time
+        corrected_length = ui.VECTOR_SCALING_METHODS[ui.SELECTED_VECTOR_SCALING_METHOD](length)
+
         # Because pyvista is stupid and just scales the entire arrow to the magnitute
         # of the vector, we must divide by length to get consistent arrows.
-        actual_tip_length = min(ui.VECTOR_TIP_LENGTH / length, 1.0)
-        actual_tip_radius = (0.1 * ui.VECTOR_THICKNESS) / length
-        actual_shaft_radius = (0.05 * ui.VECTOR_THICKNESS) / length
+        actual_tip_length = min(ui.VECTOR_TIP_LENGTH / corrected_length, 1.0)
+        actual_tip_radius = (0.1 * ui.VECTOR_THICKNESS) / corrected_length
+        actual_shaft_radius = (0.05 * ui.VECTOR_THICKNESS) / corrected_length
 
         vector_arrow_mesh = pv.Arrow(
             start=(0, 0, 0),
@@ -160,7 +164,7 @@ class VisualizerArea(QtWidgets.QWidget):
             tip_resolution=ui.VECTOR_RESOLUTION,
             shaft_radius=actual_shaft_radius,
             shaft_resolution=ui.VECTOR_RESOLUTION,
-            scale=length
+            scale=corrected_length
         )
 
         if colour:
