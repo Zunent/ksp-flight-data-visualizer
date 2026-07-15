@@ -133,23 +133,29 @@ class VisualizerArea(QtWidgets.QWidget):
         """Draws an origin vector with a tip at <data_vector.data_value>, 
         a label with <data_vector.name> and the vector's value at the tip, and <data_vector.colour> as the colour.
 
-        If the vector would have no length (tip lies on the origin), no vector will be drawn.
+        If the vector would have little to no length (tip lies on the origin), no vector will be drawn.
         If no colour has been defined, the vector will not be drawn.
         """
         vector_value, name, colour = data_vector.get_attributes()
-        if vector_value == (0, 0, 0):
-            return
 
         vector = np.array(vector_value)
         length = float(np.linalg.norm(vector))
 
+        if length < ui.VECTOR_LENGTH_THRESHOLD:
+            return
+
         direction = vector / length
+
+        # Add ability to process vector length so that longer and shorter vectors can be
+        # viewed at the same time
+        corrected_length = ui.VECTOR_SCALING_METHODS[ui.SELECTED_VECTOR_SCALING_METHOD](length) * ui.OVERALL_SCALE
+        corrected_vector = direction * corrected_length
 
         # Because pyvista is stupid and just scales the entire arrow to the magnitute
         # of the vector, we must divide by length to get consistent arrows.
-        actual_tip_length = min(ui.VECTOR_TIP_LENGTH / length, 1.0)
-        actual_tip_radius = (0.1 * ui.VECTOR_THICKNESS) / length
-        actual_shaft_radius = (0.05 * ui.VECTOR_THICKNESS) / length
+        actual_tip_length = min(ui.VECTOR_TIP_LENGTH / corrected_length, 1.0)
+        actual_tip_radius = (0.1 * ui.VECTOR_THICKNESS) / corrected_length
+        actual_shaft_radius = (0.05 * ui.VECTOR_THICKNESS) / corrected_length
 
         vector_arrow_mesh = pv.Arrow(
             start=(0, 0, 0),
@@ -159,7 +165,7 @@ class VisualizerArea(QtWidgets.QWidget):
             tip_resolution=ui.VECTOR_RESOLUTION,
             shaft_radius=actual_shaft_radius,
             shaft_resolution=ui.VECTOR_RESOLUTION,
-            scale=length
+            scale=corrected_length
         )
 
         if colour:
@@ -167,7 +173,7 @@ class VisualizerArea(QtWidgets.QWidget):
             self._drawn_actors.append(arrow_actor)
 
             label_actor = self.plotter.add_point_labels(
-                vector_value,
+                corrected_vector,
                 [(name + '\n' + str(data_vector))],
                 italic=False,
                 font_size=ui.LABEL_SIZE,
@@ -196,7 +202,7 @@ class VisualizerArea(QtWidgets.QWidget):
     def _draw_craft_model(self) -> None:
         """Draws the craft model at the origin.
         """
-        craft_model = 'diamond-2'
+        craft_model = ui.SELECTED_CRAFT_MODEL
         craft_mesh = pv.read('./assets/models/' + craft_model + '.stl')
         self._craft_model = self.plotter.add_mesh(craft_mesh, style='wireframe', line_width=2)
 
