@@ -104,10 +104,10 @@ class VisualizerArea(QtWidgets.QWidget):
 
     Private Attributes:
     - _main_mesh: The craft mesh currently displayed on the visualizer.
-    - _drawn_vectors: The vectors that are currently displayed on the visualizer.
+    - _drawn_actors: The actors that are currently displayed on the visualizer.
     """
     _main_mesh: pv.DataObject | None
-    _drawn_vectors: list[Any]
+    _drawn_actors: list[Any]
 
     def __init__(self) -> None:
         """Initializes the visualizer area.
@@ -115,7 +115,7 @@ class VisualizerArea(QtWidgets.QWidget):
         super().__init__()
         
         self._main_mesh = None
-        self._drawn_vectors = []
+        self._drawn_actors = []
 
         self.main_layout = QtWidgets.QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -145,27 +145,39 @@ class VisualizerArea(QtWidgets.QWidget):
 
         direction = vector / length
 
+        # Because pyvista is stupid and just scales the entire arrow to the magnitute
+        # of the vector, we must divide by length to get consistent arrows.
+        actual_tip_length = min(ui.VECTOR_TIP_LENGTH / length, 1.0)
+        actual_tip_radius = (0.1 * ui.VECTOR_THICKNESS) / length
+        actual_shaft_radius = (0.05 * ui.VECTOR_THICKNESS) / length
+
         vector_arrow_mesh = pv.Arrow(
             start=(0, 0, 0),
             direction=direction,
-            tip_length=ui.VECTOR_TIP_LENGTH,
-            tip_radius=(0.1 * ui.VECTOR_THICKNESS),
+            tip_length=actual_tip_length,
+            tip_radius=actual_tip_radius,
             tip_resolution=ui.VECTOR_RESOLUTION,
-            shaft_radius=(0.05 * ui.VECTOR_THICKNESS),
+            shaft_radius=actual_shaft_radius,
             shaft_resolution=ui.VECTOR_RESOLUTION,
             scale=length
         )
 
         if colour:
-            self._drawn_vectors.append(self.plotter.add_mesh(vector_arrow_mesh, color=colour))
-            self.plotter.add_point_labels(
+            arrow_actor = self.plotter.add_mesh(vector_arrow_mesh, color=colour, reset_camera=False, render=False)
+            self._drawn_actors.append(arrow_actor)
+
+            label_actor = self.plotter.add_point_labels(
                 vector_value,
-                [(name + '\n' + str(vector_value).replace('(', '<').replace(')', '>'))],
+                [(name + '\n' + str(data_vector))],
                 italic=False,
                 font_size=ui.LABEL_SIZE,
                 text_color='black',
-                always_visible=True
+                always_visible=True,
+                reset_camera=False,
+                show_points=False,
+                render=False
             )
+            self._drawn_actors.append(label_actor)
     
     def _draw_labeled_origin_vectors(self, vectors: list[core.data_processor.DataVector]) -> None:
         """Draws a list of DataVectors to the visualizer area.
@@ -173,21 +185,13 @@ class VisualizerArea(QtWidgets.QWidget):
         for current_vector in vectors:
             self._draw_single_labeled_origin_vector(current_vector)
     
-    def _clear_drawn_vectors(self) -> None:
-        """Erases the vectors that have been drawn and placed into <self._drawn_vectors>.
+    def _clear_drawn_actors(self) -> None:
+        """Erases the actors that have been drawn and placed into <self._drawn_actors>.
         """
-        for actor in self._drawn_vectors:
-            self.plotter.remove_actor(actor)
+        for actor in self._drawn_actors:
+            self.plotter.remove_actor(actor, render=False)
         
-        self._drawn_vectors.clear()
-        
-        # For whatever reason pyvista REALLY doesn't like it when
-        # clear_point_labels is called when there aren't point labels.
-        # There's no way to check for them from what I've found so.
-        try:
-            self.plotter.clear_point_labels()
-        except Exception:
-            pass
+        self._drawn_actors.clear()
     
     def _draw_craft_model(self) -> None:
         """Draws the craft model at the origin.
@@ -199,8 +203,10 @@ class VisualizerArea(QtWidgets.QWidget):
     def update_vector_display(self, vectors: list[core.data_processor.DataVector]) -> None:
         """Erases all vectors already drawn on the display and replaces them with <vectors>.
         """
-        self._clear_drawn_vectors()
+        self._clear_drawn_actors()
         self._draw_labeled_origin_vectors(vectors)
+        # Set to manually render all at once to eliminate flickering.
+        self.plotter.render()
 
 class ScrubberBar(QtWidgets.QWidget):
     """A zone to control the playback and scrubbing of flight data visualization.
@@ -217,6 +223,8 @@ class ScrubberBar(QtWidgets.QWidget):
     _loaded_data: core.data_processor.DataFile | None
     _time_indexes: list[float]
     _playback_index: int
+
+    playback_updated = pyqtSignal(float)
 
     def __init__(self, polling_interval: int) -> None:
         """Initializes a Scrubber Bar with a playback slider, rewind button, 
@@ -325,6 +333,7 @@ class ScrubberBar(QtWidgets.QWidget):
             self.playback_position_indicator.setText(str(new_value))
         else:
             self.playback_position_indicator.setText(str(round(self._time_indexes[new_value], 1)))
+            self.playback_updated.emit(self._time_indexes[new_value])
     
     def _on_playback_bar_pressed(self) -> None:
         """Triggered when the user starts moving the playback bar.

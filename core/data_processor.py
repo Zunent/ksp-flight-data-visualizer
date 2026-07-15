@@ -143,12 +143,12 @@ class DataFile():
         """
         return self._processed_dataframe.index.tolist()
     
-    def get_vectors_at_index(self, time_index: float) -> list[DataVector] | None:
+    def get_vectors_at_index(self, time_index: float) -> list[DataVector]:
         """Returns a list of vectors at row <time_index> of <self._processed_dataframe> if it is a valid index.
-        Otherwise returns None.
+        Otherwise returns an empty list.
         """
         if time_index not in self._processed_dataframe.index:
-            return None
+            return []
         else:
             row_values = self._processed_dataframe.loc[time_index]
             filtered_vector_row_values = [x for x in row_values if isinstance(x, DataVector)]
@@ -178,6 +178,10 @@ class DataVector():
             self.colour = ui.LABEL_TO_COLOUR[colour]
         else:
             self.colour = colour
+
+    def __str__(self) -> str:
+        x, y, z = self.data_value
+        return f"<{round(x, 2)}, {round(y, 2)}, {round(z, 2)}>"
     
     def update_value(self, new_value: tuple[float, float, float]) -> None:
         """Updates <self.data_value> to <new_value>.
