@@ -13,6 +13,7 @@ VECTOR_SCALING_METHODS = {
 }
 
 SELECTED_VECTOR_SCALING_METHOD = "logarithmic"
+OVERALL_SCALE = 0.5
 
 # Parameter(s) for all labels.
 LABEL_SIZE = 20
