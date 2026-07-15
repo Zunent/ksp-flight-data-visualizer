@@ -1,4 +1,6 @@
 from ui import custom_widgets as cw
+from core import data_processor
+import time
 
 from PyQt5 import QtWidgets
 
@@ -26,3 +28,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.drop_area = cw.FileDropArea()
         self.main_layout.addWidget(self.drop_area)
+
+        self._datafile = None
+        self.drop_area.file_dropped.connect(self._process_dropped_file)
+    
+    def _process_dropped_file(self, file_path: str) -> None:
+        """Return a formatted DataFile processed from a dropped file.
+        """
+        self._datafile = data_processor.DataFile(file_path)

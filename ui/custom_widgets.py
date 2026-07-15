@@ -6,7 +6,7 @@ import numpy as np
 from typing import Any
 
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QElapsedTimer, pyqtSignal
 from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 
 import pyvista as pv
@@ -102,12 +102,12 @@ class FileDropArea(QtWidgets.QLabel):
 class VisualizerArea(QtWidgets.QWidget):
     """The 3D visualizer area for displaying vector data.
 
-    Attributes:
+    Private Attributes:
     - _main_mesh: The craft mesh currently displayed on the visualizer.
-    - _drawn_vectors: The vectors that are currently displayed on the visualizer.
+    - _drawn_actors: The actors that are currently displayed on the visualizer.
     """
     _main_mesh: pv.DataObject | None
-    _drawn_vectors: list[Any]
+    _drawn_actors: list[Any]
 
     def __init__(self) -> None:
         """Initializes the visualizer area.
@@ -115,7 +115,7 @@ class VisualizerArea(QtWidgets.QWidget):
         super().__init__()
         
         self._main_mesh = None
-        self._drawn_vectors = []
+        self._drawn_actors = []
 
         self.main_layout = QtWidgets.QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -145,27 +145,39 @@ class VisualizerArea(QtWidgets.QWidget):
 
         direction = vector / length
 
+        # Because pyvista is stupid and just scales the entire arrow to the magnitute
+        # of the vector, we must divide by length to get consistent arrows.
+        actual_tip_length = min(ui.VECTOR_TIP_LENGTH / length, 1.0)
+        actual_tip_radius = (0.1 * ui.VECTOR_THICKNESS) / length
+        actual_shaft_radius = (0.05 * ui.VECTOR_THICKNESS) / length
+
         vector_arrow_mesh = pv.Arrow(
             start=(0, 0, 0),
             direction=direction,
-            tip_length=ui.VECTOR_TIP_LENGTH,
-            tip_radius=(0.1 * ui.VECTOR_THICKNESS),
+            tip_length=actual_tip_length,
+            tip_radius=actual_tip_radius,
             tip_resolution=ui.VECTOR_RESOLUTION,
-            shaft_radius=(0.05 * ui.VECTOR_THICKNESS),
+            shaft_radius=actual_shaft_radius,
             shaft_resolution=ui.VECTOR_RESOLUTION,
             scale=length
         )
 
         if colour:
-            self._drawn_vectors.append(self.plotter.add_mesh(vector_arrow_mesh, color=colour))
-            self.plotter.add_point_labels(
+            arrow_actor = self.plotter.add_mesh(vector_arrow_mesh, color=colour, reset_camera=False, render=False)
+            self._drawn_actors.append(arrow_actor)
+
+            label_actor = self.plotter.add_point_labels(
                 vector_value,
-                [(name + '\n' + str(vector_value).replace('(', '<').replace(')', '>'))],
+                [(name + '\n' + str(data_vector))],
                 italic=False,
                 font_size=ui.LABEL_SIZE,
                 text_color='black',
-                always_visible=True
+                always_visible=True,
+                reset_camera=False,
+                show_points=False,
+                render=False
             )
+            self._drawn_actors.append(label_actor)
     
     def _draw_labeled_origin_vectors(self, vectors: list[core.data_processor.DataVector]) -> None:
         """Draws a list of DataVectors to the visualizer area.
@@ -173,14 +185,13 @@ class VisualizerArea(QtWidgets.QWidget):
         for current_vector in vectors:
             self._draw_single_labeled_origin_vector(current_vector)
     
-    def _clear_drawn_vectors(self) -> None:
-        """Erases the vectors that have been drawn and placed into <self._drawn_vectors>.
+    def _clear_drawn_actors(self) -> None:
+        """Erases the actors that have been drawn and placed into <self._drawn_actors>.
         """
-        for actor in self._drawn_vectors:
-            self.plotter.remove_actor(actor)
+        for actor in self._drawn_actors:
+            self.plotter.remove_actor(actor, render=False)
         
-        self._drawn_vectors.clear()
-        self.plotter.clear_point_labels()
+        self._drawn_actors.clear()
     
     def _draw_craft_model(self) -> None:
         """Draws the craft model at the origin.
@@ -192,5 +203,175 @@ class VisualizerArea(QtWidgets.QWidget):
     def update_vector_display(self, vectors: list[core.data_processor.DataVector]) -> None:
         """Erases all vectors already drawn on the display and replaces them with <vectors>.
         """
-        self._clear_drawn_vectors()
+        self._clear_drawn_actors()
         self._draw_labeled_origin_vectors(vectors)
+        # Set to manually render all at once to eliminate flickering.
+        self.plotter.render()
+
+class ScrubberBar(QtWidgets.QWidget):
+    """A zone to control the playback and scrubbing of flight data visualization.
+
+    Private Attributes:
+    - _is_paused: Whether the data playback is paused.
+    - _polling_interval: Polling interval for the async playback in ms.
+    - _loaded_data: The DataFile the visualizer currently has loaded. None if no data has been loaded.
+    - _time_indexes: List of indexes from self._loaded_data. Empty list if no data has been loaded.
+    - _playback_index: Index of where the playback currently is in the DataFile.
+    """
+    _is_paused: bool
+    _polling_interval: int
+    _loaded_data: core.data_processor.DataFile | None
+    _time_indexes: list[float]
+    _playback_index: int
+
+    playback_updated = pyqtSignal(float)
+
+    def __init__(self, polling_interval: int) -> None:
+        """Initializes a Scrubber Bar with a playback slider, rewind button, 
+        play/pause button, and a position indicator.
+        
+        Sets playback polling interval to <polling_interval> ms.
+        """
+        super().__init__()
+        self._polling_interval = polling_interval
+
+        self.main_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+        self.setLayout(self.main_layout)
+
+        # Rewind button to jump back to start of data playback.
+        self.rewind_button = QtWidgets.QPushButton()
+        self.rewind_button.pressed.connect(self._on_rewind_press)
+        self.main_layout.addWidget(self.rewind_button)
+
+        # Play button to begin regular playback of data.
+        self.play_button = QtWidgets.QPushButton()
+        self.play_button.setCheckable(True)
+        self.play_button.setChecked(False)
+        self.play_button.toggled.connect(self._on_toggle_pause)
+        self.main_layout.addWidget(self.play_button)
+        # Default is paused.
+        self._is_paused = True
+
+        # Slider for tracking playback progress and scrub through data.
+        self.playback_slider = QtWidgets.QSlider(Qt.Horizontal)
+        self.playback_slider.setRange(0, 100)
+        self.playback_slider.setValue(0)
+        self._playback_index = 0
+        self.playback_slider.valueChanged.connect(self._on_playback_location_update)
+        self.playback_slider.sliderPressed.connect(self._on_playback_bar_pressed)
+        self.playback_slider.sliderReleased.connect(self._on_playback_bar_released)
+        self.main_layout.addWidget(self.playback_slider)
+
+        # Label to indicate data index.
+        self.playback_position_indicator = QtWidgets.QLabel()
+        self.playback_position_indicator.setText(str(self.playback_slider.value()))
+        self.main_layout.addWidget(self.playback_position_indicator)
+
+        # No data loaded by default.
+        self._loaded_data = None
+        self._time_indexes = []
+
+        # Setup the QTimer for polling
+        self.poll_timer = QTimer(self)
+        self.poll_timer.timeout.connect(self._poll_data)
+        self.poll_timer.setInterval(self._polling_interval)
+        
+        # Setup a stopwatch to track real-world elapsed time
+        self.elapsed_timer = QElapsedTimer()
+        
+        # Keeps track of where the playback time was when the user last paused
+        self._playback_time_offset = 0.0
+
+    def load_data(self, new_datafile: core.data_processor.DataFile) -> None:
+        """Sets <self._loaded_data> to <new_datafile>.
+        """
+        self._loaded_data = new_datafile
+        self._time_indexes = self._loaded_data.get_time_indexes()
+        # Reset playback to the start.
+        self._on_rewind_press()
+        self.playback_slider.setRange(0, len(self._time_indexes) - 1)
+
+    def _on_toggle_pause(self, is_checked: bool) -> None:
+        """Triggered when the pause/play button is pressed.
+        """
+        if is_checked:
+            self._try_unpause()
+        else:
+            self._try_pause()
+
+    def _try_unpause(self) -> None:
+        """Tries to set the play status to the unpaused state.
+        Playback will not be unpaused if self._loaded_data is not a DataFile or self._time_indexes is empty.
+        """
+        if self._loaded_data and self._time_indexes:
+            self._is_paused = False
+            self.elapsed_timer.start()
+            self.poll_timer.start()
+    
+    def _try_pause(self) -> None:
+        """Forces the play status to the paused state.
+        """
+        self._is_paused = True
+        self.poll_timer.stop()
+        if self._loaded_data and self._time_indexes:
+            self._playback_time_offset = self._time_indexes[self._playback_index]
+    
+    def _on_rewind_press(self) -> None:
+        """Triggered when the rewind button is pressed.
+        """
+        self.play_button.setChecked(False)
+        self.playback_slider.setValue(0)
+        self._playback_time_offset = 0.0
+        self._playback_index = 0
+    
+    def _on_playback_location_update(self, new_value: int) -> None:
+        """Triggered when the playback slider's position is updated.
+        """
+        if not self._loaded_data:
+            self.playback_position_indicator.setText(str(new_value))
+        else:
+            self.playback_position_indicator.setText(str(round(self._time_indexes[new_value], 1)))
+            self.playback_updated.emit(self._time_indexes[new_value])
+    
+    def _on_playback_bar_pressed(self) -> None:
+        """Triggered when the user starts moving the playback bar.
+        """
+        self.poll_timer.stop()
+
+    def _on_playback_bar_released(self) -> None:
+        """Triggered when the user releases the playback bar.
+        """
+        self._playback_index = self.playback_slider.value()
+
+        if self._loaded_data and self._time_indexes:
+            self._playback_time_offset = self._time_indexes[self._playback_index]
+        if not self._is_paused:
+            self._try_unpause()
+
+    def _poll_data(self) -> None:
+        """Runs every polling interval. Syncs the data index with real elapsed time.
+
+        Preconditions:
+         - self._loaded_data is not None
+         - self._time_indexes is not None
+        """
+        current_playback_time = self._playback_time_offset + (self.elapsed_timer.elapsed() / 1000.0)
+        index_changed = False
+        while self._playback_index < len(self._time_indexes) - 1:
+            next_timestamp = self._time_indexes[self._playback_index + 1]
+            
+            if current_playback_time >= next_timestamp:
+                self._playback_index += 1
+                index_changed = True
+            else:
+                break
+        
+        # Check if at the end of playback.
+        if self._playback_index >= len(self._time_indexes) - 1:
+            self.play_button.setChecked(False)
+        
+        # Update playback bar if needed.
+        if index_changed:
+            self.playback_slider.setValue(self._playback_index)
