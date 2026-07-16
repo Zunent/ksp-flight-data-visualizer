@@ -35,8 +35,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playback_control.playback_updated.connect(self._on_playback_update)
         self.left_layout.addWidget(self.playback_control)
 
+        self.right_layout = QtWidgets.QVBoxLayout()
+        self.right_widget = QtWidgets.QWidget()
+        self.right_widget.setLayout(self.right_layout)
+        self.main_layout.addWidget(self.right_widget)
+
+        self.settings_menu = cw.SettingsWidget()
+        self.right_layout.addWidget(self.settings_menu)
+
         self.drop_area = cw.FileDropArea()
-        self.main_layout.addWidget(self.drop_area)
+        self.right_layout.addWidget(self.drop_area)
 
         self._datafile = None
         self.drop_area.file_dropped.connect(self._process_dropped_file)
