@@ -35,8 +35,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playback_control.playback_updated.connect(self._on_playback_update)
         self.left_layout.addWidget(self.playback_control)
 
+        self.right_layout = QtWidgets.QVBoxLayout()
+        self.right_widget = QtWidgets.QWidget()
+        self.right_widget.setLayout(self.right_layout)
+        self.main_layout.addWidget(self.right_widget)
+
+        self.settings_menu = cw.SettingsWidget()
+        self.settings_menu.scaling_method_updated.connect(self._on_scaling_method_update)
+        self.settings_menu.scale_modifier_updated.connect(self._on_scale_modifier_update)
+        self.settings_menu.craft_mesh_updated.connect(self._on_craft_mesh_update)
+        self.right_layout.addWidget(self.settings_menu)
+
         self.drop_area = cw.FileDropArea()
-        self.main_layout.addWidget(self.drop_area)
+        self.right_layout.addWidget(self.drop_area)
 
         self._datafile = None
         self.drop_area.file_dropped.connect(self._process_dropped_file)
@@ -53,3 +64,21 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._datafile:
             new_vectors = self._datafile.get_vectors_at_index(new_time_index)
             self.visualizer.update_vector_display(new_vectors)
+    
+    def _on_scaling_method_update(self, new_scaling_method: str) -> None:
+        """Updates the selected scaling method for the viualizer and redraws all vectors.
+        """
+        self.visualizer.selected_scaling_method = new_scaling_method
+        self.visualizer.refresh_vector_display()
+
+    def _on_scale_modifier_update(self, new_modifier: float) -> None:
+        """Updates the selected scale modifier for the viualizer and redraws all vectors.
+        """
+        self.visualizer.selected_scale_modifier = new_modifier
+        self.visualizer.refresh_vector_display()
+
+    def _on_craft_mesh_update(self, new_craft_mesh: str) -> None:
+        """Updates the seleced craft mesh for the visualizer and redraws the craft mesh.
+        """
+        self.visualizer.selected_craft_mesh = new_craft_mesh
+        self.visualizer.draw_craft_model()
