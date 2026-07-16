@@ -64,6 +64,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._datafile:
             new_vectors = self._datafile.get_vectors_at_index(new_time_index)
             self.visualizer.update_vector_display(new_vectors)
+
+            new_orientation = self._datafile.get_orientation_at_index(new_time_index)
+            if new_orientation:
+                self.visualizer.update_craft_orientation(new_orientation)
     
     def _on_scaling_method_update(self, new_scaling_method: str) -> None:
         """Updates the selected scaling method for the viualizer and redraws all vectors.
