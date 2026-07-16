@@ -169,7 +169,15 @@ class VisualizerArea(QtWidgets.QWidget):
         )
 
         if colour:
-            arrow_actor = self.plotter.add_mesh(vector_arrow_mesh, color=colour, reset_camera=False, render=False)
+            rgb_colour = colour[0:3]
+            alpha_value = colour[3] / 255.0 if len(colour) == 4 else 1.0
+
+            arrow_actor = self.plotter.add_mesh(vector_arrow_mesh, 
+                                                color=rgb_colour, 
+                                                opacity=alpha_value,
+                                                reset_camera=False, 
+                                                render=False
+                                                )
             self._drawn_actors.append(arrow_actor)
 
             label_actor = self.plotter.add_point_labels(

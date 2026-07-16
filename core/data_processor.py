@@ -25,7 +25,7 @@ class DataFile():
     _sorted_labels: dict[str, list[str]]
     _raw_dataframe: pd.DataFrame
     _processed_dataframe: pd.DataFrame
-    _comprehensive_label_to_colour: dict[str, tuple[int, int, int]]
+    _comprehensive_label_to_colour: dict[str, tuple[int, int, int, int]]
 
     def __init__(self, file_path: str) -> None:
         self._file_path = Path(file_path)
@@ -97,7 +97,7 @@ class DataFile():
         def calculate_rgb_distance(c1: tuple[int, int, int], c2: tuple[int, int, int]) -> float:
             """Calculates the straight-line Euclidean distance between two RGB colours."""
             return math.sqrt((c2[0] - c1[0])**2 + (c2[1] - c1[1])**2 + (c2[2] - c1[2])**2)
-
+        
         for label in vector_labels:
             best_candidate = (0, 0, 0)
             max_min_distance = -1.0
@@ -108,13 +108,19 @@ class DataFile():
 
             for r, g, b in itertools.product(steps, steps, steps):
                 candidate = (r, g, b)
-                min_dist = min(calculate_rgb_distance(candidate, ex_col) for 
+                min_dist = min(calculate_rgb_distance(candidate, ex_col[0:3]) for 
                                ex_col in list(self._comprehensive_label_to_colour.values()))
                 if min_dist > max_min_distance:
                     max_min_distance = min_dist
                     best_candidate = candidate
             
-            self._comprehensive_label_to_colour[label.lower()] = best_candidate
+            # I would prefer to use tuple unpacking but pylance seems to not like that
+            # and I really don't want to deal with it anymore.
+            self._comprehensive_label_to_colour[label.lower()] = (best_candidate[0],
+                                                                  best_candidate[1],
+                                                                  best_candidate[2],
+                                                                  core.DEFAULT_ALPHA
+                                                                  )
 
     def _process_raw_data(self) -> None:
         """Processes the vectors from <self._raw_dataframe> into DataVectors and puts them 
@@ -161,14 +167,14 @@ class DataVector():
     Attributes:
     - data_value: The location of the vector's tip.
     - label: The label to be used to represent the data.
-    - colour: The colour of the vector expressed in 8-bit RGB.
+    - colour: The colour of the vector expressed in 8-bit RGBA.
     """
     data_value: tuple[float, float, float]
     name: str
-    colour: tuple[int, int, int] | None
+    colour: tuple[int, int, int, int] | None
 
     def __init__(self, data_value: tuple[float, float, float], 
-                 name: str, colour: tuple[int, int, int] | None = None) -> None:
+                 name: str, colour: tuple[int, int, int, int] | None = None) -> None:
         """Initializes a DataVector class.
         If <name> is found in <ui.LABEL_TO_COLOUR>, <self.colour> is overriden with its value.
         """
@@ -189,7 +195,7 @@ class DataVector():
         self.data_value = new_value
     
     def get_attributes(self) -> tuple[tuple[float, float, float], 
-                                      str, tuple[int, int, int] | None]:
+                                      str, tuple[int, int, int, int] | None]:
         """Returns all the class' attributes in an organized tuple for easy unpacking.
         """
         return (self.data_value, self.name, self.colour)
