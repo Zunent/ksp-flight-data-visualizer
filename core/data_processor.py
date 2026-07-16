@@ -31,8 +31,8 @@ class DataFile():
         self._file_path = Path(file_path)
         self._raw_dataframe = self._process_valid_file()
 
-        self._sorted_labels = {'scalars': [], 'vectors': []}
-        self._filter_out_vectors()
+        self._sorted_labels = {'scalars': [], 'vectors': [], 'orientation': []}
+        self._filter_out_special_data()
 
         self._comprehensive_label_to_colour = ui.LABEL_TO_COLOUR.copy()
         self._processed_dataframe = self._create_empty_processed_dataframe()
@@ -53,34 +53,49 @@ class DataFile():
             case _:
                 raise ValueError(f"Unsupported file type: {self._file_path.suffix}")
 
-    def _filter_out_vectors(self) -> None:
-        """Sets <self.sorted_labels> to be a dict of lists with keys 'scalars' and 'vectors', 
-        each containing a list of names of data labels corresponding to scalars or vectors, 
-        to the latest data file.
+    def _filter_out_special_data(self) -> None:
+        """Sets <self.sorted_labels> to be a dict of lists with keys 'scalars', 'vectors', and 'orientation' 
+        each containing a list of names of data labels corresponding to scalar, vectors, or craft orientation
+        if such data is present.
         """
         vector_pattern = re.compile(r'^([^XYZ]+)([XYZ])')
         data_labels = self._raw_dataframe.columns.to_list()
         label_holding = {}
 
         for label in data_labels:
+            # Check if the label ends in X, Y, or Z.
             match = vector_pattern.match(label)
             if match:
+                # Get the prefix and add it to a dict for tracking how many of them are found.
                 prefix = match.group(1)
                 label_holding[prefix] = 1 if prefix not in label_holding else label_holding[prefix] + 1
             else:
                 self._sorted_labels['scalars'].append(label)
         
         for prefix, value in label_holding.items():
+            # Checks if three vector-style labels have been found for a certain prefix.
+            # This does not check if they are of X, Y, and Z.
             if value == 3:
                 self._sorted_labels['vectors'].append(prefix)
             elif prefix not in self._sorted_labels['scalars']:
                 self._sorted_labels['scalars'].append(prefix)
+        
+        orientation_labels = ['Pitch', 'Yaw', 'Roll']
+        if all(label in self._sorted_labels['scalars'] for label in orientation_labels):
+            # All orientation labels are present, remove them from scalars and add them to orientation.
+            self._sorted_labels['orientation'] = orientation_labels
+            for label in orientation_labels:
+                self._sorted_labels['scalars'].remove(label)
 
     def _create_empty_processed_dataframe(self) -> pd.DataFrame:
         """Return an empty DataFrame with the indexes from <self._raw_dataframe> and
         the columns from <self._sorted_labels>.
         """
         column_labels = self._sorted_labels['scalars'] + self._sorted_labels['vectors']
+
+        if self._sorted_labels['orientation']:
+            column_labels.append('Orientation')
+        
         return pd.DataFrame(index=self._raw_dataframe.index, columns=column_labels)
 
     def _create_distinct_colours(self) -> None:
@@ -129,6 +144,14 @@ class DataFile():
         for scalar_label in self._sorted_labels['scalars']:
             self._processed_dataframe[scalar_label] = self._raw_dataframe[scalar_label]
         
+        if self._sorted_labels['orientation']:
+            pitch_data = self._raw_dataframe['Pitch'].to_list()
+            yaw_data = self._raw_dataframe['Yaw'].to_list()
+            roll_data = self._raw_dataframe['Roll'].to_list()
+            
+            # Zip into a list of tuples: (pitch, yaw, roll)
+            self._processed_dataframe['Orientation'] = list(zip(pitch_data, yaw_data, roll_data))
+
         for vector_label in self._sorted_labels['vectors']:
             x_data = self._raw_dataframe[vector_label + 'X'].to_list()
             y_data = self._raw_dataframe[vector_label + 'Y'].to_list()
@@ -159,6 +182,17 @@ class DataFile():
             row_values = self._processed_dataframe.loc[time_index]
             filtered_vector_row_values = [x for x in row_values if isinstance(x, DataVector)]
             return filtered_vector_row_values
+    
+    def get_orientation_at_index(self, time_index: float) -> tuple[float, float, float] | None:
+        """Returns the (Pitch, Yaw, Roll) tuple at the given time index. 
+        Returns None if the index is invalid or if orientation data was not present.
+        """
+        if time_index not in self._processed_dataframe.index or not self._sorted_labels['orientation']:
+            return None
+        
+        # oh huh you can just do that
+        # you learn something new every day :>
+        return self._processed_dataframe.at[time_index, 'Orientation'] # type: ignore
 
 class DataVector():
     """A vector that contains label and colour information for displaying.
