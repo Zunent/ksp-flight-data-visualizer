@@ -1,4 +1,4 @@
-# Kerbal Flight Data Visualizer
+# KSP Flight Data Visualizer
 *A lightweight 3D visualizer for analyzing KSP flight data.*
 
 ## Description
