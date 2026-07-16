@@ -4,6 +4,7 @@ import os
 import ui
 import numpy as np
 from typing import Any
+from pathlib import Path
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QTimer, QElapsedTimer, pyqtSignal
@@ -401,7 +402,19 @@ class ScrubberBar(QtWidgets.QWidget):
 
 class SettingsWidget(QtWidgets.QWidget):
     """A zone for editing settings related to the playback of data.
+    
+    Private Attributes:
+    - _craft_mesh_filenames: List of file names in assets/models, for use in communicating 
+                    with the visualizer.
+    - _scaling_methods: List of available scaling methods from ui/__init__, for use in
+                    communicating with the visualizer.
     """
+    _craft_mesh_filenames: list[str]
+    _scaling_methods: list[str]
+
+    scaling_method_updated = pyqtSignal(str)
+    scale_modifier_updated = pyqtSignal(float)
+    craft_mesh_updated = pyqtSignal(str)
 
     def __init__(self) -> None:
         """Initializes the settings widget.
@@ -414,7 +427,9 @@ class SettingsWidget(QtWidgets.QWidget):
         main_layout.addWidget(create_horizontal_separator())
 
         scaling_method_label = QtWidgets.QLabel("Scaling Method")
+        self._scaling_methods = []
         self.scaling_method_dropdown = QtWidgets.QComboBox()
+        self.scaling_method_dropdown.addItems(self._get_available_scaling_methods())
         main_layout.addWidget(scaling_method_label)
         main_layout.addWidget(self.scaling_method_dropdown)
 
@@ -437,8 +452,25 @@ class SettingsWidget(QtWidgets.QWidget):
         main_layout.addWidget(create_horizontal_separator())
 
         craft_mesh_label = QtWidgets.QLabel("Craft Mesh")
+        self._craft_mesh_filenames = []
         self.craft_mesh_dropdown = QtWidgets.QComboBox()
+        self.craft_mesh_dropdown.addItems(self._get_available_craft_meshes())
         main_layout.addWidget(craft_mesh_label)
         main_layout.addWidget(self.craft_mesh_dropdown)
 
         main_layout.addWidget(create_horizontal_separator())
+    
+    def _get_available_scaling_methods(self) -> list[str]:
+        """Returns a list of scaling methods available in <ui.VECTOR_SCALING_METHODS> formatted in title case.
+        Sets <self._scaling_methods> to the original strings for the scaling methods.
+        """
+        self._scaling_methods = list(ui.VECTOR_SCALING_METHODS.keys())
+        return [method.replace('_', ' ').title() for method in self._scaling_methods]
+    
+    def _get_available_craft_meshes(self) -> list[str]:
+        """Returns a list of craft meshes available in assets/models formatted in title case. 
+        Sets <self._craft_mesh_filenames> to the file names retrieved from assets/models.
+        """
+        models_path = Path(__file__).resolve().parent.parent / 'assets' / 'models'
+        self._craft_mesh_filenames = [f.name for f in models_path.iterdir() if f.is_file()]
+        return [mesh_name.split('.')[0].replace('-', ' ').title() for mesh_name in self._craft_mesh_filenames]
