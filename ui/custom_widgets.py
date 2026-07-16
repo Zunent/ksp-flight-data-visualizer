@@ -261,6 +261,22 @@ class VisualizerArea(QtWidgets.QWidget):
         """
         self.update_vector_display(self._current_vectors)
 
+    def update_craft_orientation(self, orientation: tuple[float, float, float]) -> None:
+            """Updates the absolute rotation of the craft mesh.
+            """
+            if self._craft_model is None:
+                return
+
+            # Map the flight dynamics terms to 3D Cartesian axes.
+            # Pitch = X, Yaw = Y, Roll = Z
+            yaw, roll, pitch = orientation
+
+            # (pitch yaw roll)
+            # TODO Yaw, roll, and pitch are not properly set here. Figure out why. May be a problem on the data recorder side.
+            self._craft_model.orientation = (pitch, yaw, roll)
+
+            self.plotter.render()
+
 class ScrubberBar(QtWidgets.QWidget):
     """A zone to control the playback and scrubbing of flight data visualization.
 
