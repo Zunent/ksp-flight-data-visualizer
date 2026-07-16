@@ -12,8 +12,8 @@ VECTOR_SCALING_METHODS = {
     "square_root": lambda x: np.sqrt(x) 
 }
 
-SELECTED_VECTOR_SCALING_METHOD = "logarithmic"
-OVERALL_SCALE = 0.5
+DEFAULT_VECTOR_SCALING_METHOD = "linear"
+DEFAULT_OVERALL_SCALE = 0.5
 
 # Parameter(s) for all labels.
 LABEL_SIZE = 20
@@ -22,4 +22,4 @@ LABEL_TO_COLOUR = {
     'aero': (129, 181, 230, 150)
 }
 
-SELECTED_CRAFT_MODEL = 'diamond-2'
+DEFAULT_CRAFT_MODEL = 'diamond-2.stl'

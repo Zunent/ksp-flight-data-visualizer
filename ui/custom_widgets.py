@@ -112,20 +112,39 @@ class FileDropArea(QtWidgets.QLabel):
 class VisualizerArea(QtWidgets.QWidget):
     """The 3D visualizer area for displaying vector data.
 
+    Attributes:
+    - selected_scaling_method: The selected method used to scale vectors.
+    - selected_scale_modifier: The selected value used to multiply all vector lengths.
+    - selected_craft_mesh: The name of the selected craft mesh.
+    
     Private Attributes:
     - _main_mesh: The craft mesh currently displayed on the visualizer.
     - _drawn_actors: The actors that are currently displayed on the visualizer.
+    - _craft_model: The mesh that has been drawn for the craft. None if not yet drawn.
+    - _current_vectors: The vectors currently drawn to the visualizer.
     """
+    selected_scaling_method: str
+    selected_scale_modifier: float
+    selected_craft_mesh: str
+
     _main_mesh: pv.DataObject | None
     _drawn_actors: list[Any]
+    _craft_model: pv.Actor | None
+    _current_vectors: list[core.data_processor.DataVector]
 
     def __init__(self) -> None:
         """Initializes the visualizer area.
         """
         super().__init__()
+
+        self.selected_scaling_method = ui.DEFAULT_VECTOR_SCALING_METHOD
+        self.selected_scale_modifier = ui.DEFAULT_OVERALL_SCALE
+        self.selected_craft_mesh = ui.DEFAULT_CRAFT_MODEL
         
         self._main_mesh = None
         self._drawn_actors = []
+        self._craft_model = None
+        self._current_vectors = []
 
         self.main_layout = QtWidgets.QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -135,7 +154,7 @@ class VisualizerArea(QtWidgets.QWidget):
 
         self.main_layout.addWidget(self.plotter.interactor)
 
-        self._draw_craft_model()
+        self.draw_craft_model()
         self.plotter.add_axes()
         self.plotter.set_background("white")
     
@@ -151,14 +170,14 @@ class VisualizerArea(QtWidgets.QWidget):
         vector = np.array(vector_value)
         length = float(np.linalg.norm(vector))
 
-        if length < ui.VECTOR_LENGTH_THRESHOLD:
+        if length < ui.VECTOR_LENGTH_THRESHOLD or self.selected_scale_modifier == 0:
             return
 
         direction = vector / length
 
         # Add ability to process vector length so that longer and shorter vectors can be
         # viewed at the same time
-        corrected_length = ui.VECTOR_SCALING_METHODS[ui.SELECTED_VECTOR_SCALING_METHOD](length) * ui.OVERALL_SCALE
+        corrected_length = ui.VECTOR_SCALING_METHODS[self.selected_scaling_method](length) * self.selected_scale_modifier
         corrected_vector = direction * corrected_length
 
         # Because pyvista is stupid and just scales the entire arrow to the magnitute
@@ -217,20 +236,30 @@ class VisualizerArea(QtWidgets.QWidget):
         
         self._drawn_actors.clear()
     
-    def _draw_craft_model(self) -> None:
-        """Draws the craft model at the origin.
+    def draw_craft_model(self) -> None:
+        """Draws and refreshes the craft model at the origin.
         """
-        craft_model = ui.SELECTED_CRAFT_MODEL
-        craft_mesh = pv.read('./assets/models/' + craft_model + '.stl')
-        self._craft_model = self.plotter.add_mesh(craft_mesh, style='wireframe', line_width=2)
+        if self._craft_model:
+            self.plotter.remove_actor(self._craft_model, render=False)
+        craft_model = self.selected_craft_mesh
+        craft_mesh = pv.read('./assets/models/' + craft_model)
+        self._craft_model = self.plotter.add_mesh(craft_mesh, style='wireframe', line_width=2, render=False)
+        self.plotter.render()
 
     def update_vector_display(self, vectors: list[core.data_processor.DataVector]) -> None:
         """Erases all vectors already drawn on the display and replaces them with <vectors>.
         """
         self._clear_drawn_actors()
+        self._current_vectors = vectors
         self._draw_labeled_origin_vectors(vectors)
         # Set to manually render all at once to eliminate flickering.
         self.plotter.render()
+
+    def refresh_vector_display(self) -> None:
+        """Erases all vectors already drawn and draws them again with updated values.
+        For use if <self.selected_scaling_method> or <self.selected_scale_modifier> are updated.
+        """
+        self.update_vector_display(self._current_vectors)
 
 class ScrubberBar(QtWidgets.QWidget):
     """A zone to control the playback and scrubbing of flight data visualization.
@@ -430,24 +459,21 @@ class SettingsWidget(QtWidgets.QWidget):
         self._scaling_methods = []
         self.scaling_method_dropdown = QtWidgets.QComboBox()
         self.scaling_method_dropdown.addItems(self._get_available_scaling_methods())
+        self.scaling_method_dropdown.currentIndexChanged.connect(self._on_scaling_method_update)
         main_layout.addWidget(scaling_method_label)
         main_layout.addWidget(self.scaling_method_dropdown)
 
         main_layout.addWidget(create_horizontal_separator())
 
         scale_modifier_label = QtWidgets.QLabel("Scale Modifier")
-        self.scale_modifier_input = QtWidgets.QWidget()
-        scale_modifier_layout = QtWidgets.QHBoxLayout()
-        self.scale_modifier_input.setLayout(scale_modifier_layout)
         main_layout.addWidget(scale_modifier_label)
-        main_layout.addWidget(self.scale_modifier_input)
 
         self.scale_modifier_spinbox = QtWidgets.QDoubleSpinBox()
         self.scale_modifier_spinbox.setMinimum(0)
+        self.scale_modifier_spinbox.setValue(0.5)
         self.scale_modifier_spinbox.setSingleStep(0.1)
-        scale_modifier_layout.addWidget(self.scale_modifier_spinbox)
-        self.scale_modifier_confirmation = QtWidgets.QPushButton("Confirm")
-        scale_modifier_layout.addWidget(self.scale_modifier_confirmation)
+        self.scale_modifier_spinbox.valueChanged.connect(self._on_scale_modifier_update)
+        main_layout.addWidget(self.scale_modifier_spinbox)
 
         main_layout.addWidget(create_horizontal_separator())
 
@@ -455,6 +481,7 @@ class SettingsWidget(QtWidgets.QWidget):
         self._craft_mesh_filenames = []
         self.craft_mesh_dropdown = QtWidgets.QComboBox()
         self.craft_mesh_dropdown.addItems(self._get_available_craft_meshes())
+        self.craft_mesh_dropdown.currentIndexChanged.connect(self._on_craft_mesh_update)
         main_layout.addWidget(craft_mesh_label)
         main_layout.addWidget(self.craft_mesh_dropdown)
 
@@ -474,3 +501,20 @@ class SettingsWidget(QtWidgets.QWidget):
         models_path = Path(__file__).resolve().parent.parent / 'assets' / 'models'
         self._craft_mesh_filenames = [f.name for f in models_path.iterdir() if f.is_file()]
         return [mesh_name.split('.')[0].replace('-', ' ').title() for mesh_name in self._craft_mesh_filenames]
+    
+    def _on_scaling_method_update(self, new_index: int) -> None:
+        """Handles a new scaling method being selected.
+        """
+        new_scaling_method = self._scaling_methods[new_index]
+        self.scaling_method_updated.emit(new_scaling_method)
+
+    def _on_scale_modifier_update(self, new_value: float) -> None:
+        """Handles a new scale modifier being selected.
+        """
+        self.scale_modifier_updated.emit(new_value)
+
+    def _on_craft_mesh_update(self, new_index: int) -> None:
+        """Handles a new craft mesh being selected.
+        """
+        new_craft_name = self._craft_mesh_filenames[new_index]
+        self.craft_mesh_updated.emit(new_craft_name)
