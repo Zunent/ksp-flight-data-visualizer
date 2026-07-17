@@ -22,4 +22,4 @@ LABEL_TO_COLOUR = {
     'aero': (129, 181, 230, 150)
 }
 
-DEFAULT_CRAFT_MODEL = 'diamond-2.stl'
+DEFAULT_CRAFT_MODEL = 'diamond-1.stl'
