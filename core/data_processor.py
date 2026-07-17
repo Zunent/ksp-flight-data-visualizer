@@ -171,6 +171,11 @@ class DataFile():
         """Returns a list of all indexes from <self._processed_dataframe>.
         """
         return self._processed_dataframe.index.tolist()
+
+    def get_variable_labels(self) -> list[str]:
+        """Returns a list of all variable labels from <self._processed_dataframe>.
+        """
+        return self._processed_dataframe.columns.tolist()
     
     def get_vectors_at_index(self, time_index: float) -> list[DataVector]:
         """Returns a list of vectors at row <time_index> of <self._processed_dataframe> if it is a valid index.

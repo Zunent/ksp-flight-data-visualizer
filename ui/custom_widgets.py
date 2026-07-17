@@ -34,10 +34,11 @@ class FileDropArea(QtWidgets.QLabel):
         
         self._default_text = 'Drag and drop a supported data file here.'
         self._valid_text = 'Drop data file for processing.'
-        self._invalid_text = ('Invalid data type / too many files. Accepted file extensions are:\n' + 
+        self._invalid_text = ('Invalid data type / too many files.\nAccepted file extensions are:\n' + 
                                 ' | '.join(core.SUPPORTED_FILE_TYPES))
 
         self.setText(self._default_text)
+        self.setWordWrap(True)
         self.setAlignment(Qt.AlignCenter)
         self.setAcceptDrops(True)
 
@@ -534,3 +535,38 @@ class SettingsWidget(QtWidgets.QWidget):
         """
         new_craft_name = self._craft_mesh_filenames[new_index]
         self.craft_mesh_updated.emit(new_craft_name)
+
+class ValueDisplayWidget(QtWidgets.QWidget):
+    """A widget for displaying values from the data file being played.
+    
+    Private Attributes:
+    - _loaded_datafile: The data file that has been loaded. None if not loaded.
+    - _variable_labels: A list containing the variable labels currently displayed.
+    """
+    _loaded_datafile: core.data_processor.DataFile | None
+    _variable_labels: list[QtWidgets.QLabel]
+
+    def __init__(self) -> None:
+        """Initializes a value display widget.
+        """
+        super().__init__()
+
+        self._loaded_datafile = None
+        self._variable_labels = []
+
+        main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(main_layout)
+
+        self.main_label = QtWidgets.QLabel("No Data File Has Been Loaded")
+        main_layout.addWidget(self.main_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    def load_datafile(self, new_datafile: core.data_processor.DataFile) -> None:
+        """Sets <self._loaded_datafile> to <new_datafile> and refreshes the displayed labels to
+        the new variables.
+        """
+        pass
+
+    def update_value_labels(self, new_time_index: float) -> None:
+        """Updates the displayed variable labels to the new time index using <self._loaded_datafile>.
+        """
+        pass
