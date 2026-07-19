@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QTimer, QElapsedTimer, pyqtSignal
-from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
+from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent, QIcon
 
 import pyvista as pv
 from pyvistaqt import QtInteractor
@@ -328,8 +328,13 @@ class ScrubberBar(QtWidgets.QWidget):
 
         self.setMinimumWidth(600)
 
+        self.play_icon = QIcon("assets/icons/play.svg")
+        self.pause_icon = QIcon("assets/icons/pause.svg")
+        self.rewind_icon = QIcon("assets/icons/rewind.svg")
+
         # Rewind button to jump back to start of data playback.
         self.rewind_button = QtWidgets.QPushButton()
+        self.rewind_button.setIcon(self.rewind_icon)
         self.rewind_button.pressed.connect(self._on_rewind_press)
         self.main_layout.addWidget(self.rewind_button)
 
@@ -337,6 +342,7 @@ class ScrubberBar(QtWidgets.QWidget):
         self.play_button = QtWidgets.QPushButton()
         self.play_button.setCheckable(True)
         self.play_button.setChecked(False)
+        self.play_button.setIcon(self.play_icon)
         self.play_button.toggled.connect(self._on_toggle_pause)
         self.main_layout.addWidget(self.play_button)
         # Default is paused.
@@ -397,12 +403,14 @@ class ScrubberBar(QtWidgets.QWidget):
             self._is_paused = False
             self.elapsed_timer.start()
             self.poll_timer.start()
+            self.play_button.setIcon(self.pause_icon)
     
     def _try_pause(self) -> None:
         """Forces the play status to the paused state.
         """
         self._is_paused = True
         self.poll_timer.stop()
+        self.play_button.setIcon(self.play_icon)
         if self._loaded_data and self._time_indexes:
             self._playback_time_offset = self._time_indexes[self._playback_index]
     
