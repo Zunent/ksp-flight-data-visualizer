@@ -484,6 +484,9 @@ class SettingsWidget(QtWidgets.QWidget):
         main_layout = QtWidgets.QVBoxLayout()
         self.setLayout(main_layout)
 
+        size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        self.setSizePolicy(size_policy)
+
         main_layout.addWidget(create_horizontal_separator())
 
         scaling_method_label = QtWidgets.QLabel("Scaling Method")
@@ -567,6 +570,9 @@ class ValueDisplayWidget(QtWidgets.QWidget):
 
         self._loaded_datafile = None
         self._variable_labels = {}
+
+        size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        self.setSizePolicy(size_policy)
 
         self.main_layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.main_layout)
