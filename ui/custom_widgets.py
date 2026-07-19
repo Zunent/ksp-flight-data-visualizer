@@ -4,6 +4,7 @@ import os
 import ui
 import numpy as np
 from typing import Any
+from pathlib import Path
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QTimer, QElapsedTimer, pyqtSignal
@@ -11,6 +12,15 @@ from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 
 import pyvista as pv
 from pyvistaqt import QtInteractor
+
+def create_horizontal_separator() -> QtWidgets.QFrame:
+        """Returns a new horizontal bar.
+        """
+        bar = QtWidgets.QFrame()
+        bar.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        bar.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        bar.setObjectName('horizontalBar')
+        return bar
 
 class FileDropArea(QtWidgets.QLabel):
     """A space on the interface for the user to drop in the data file for processing.
@@ -24,10 +34,11 @@ class FileDropArea(QtWidgets.QLabel):
         
         self._default_text = 'Drag and drop a supported data file here.'
         self._valid_text = 'Drop data file for processing.'
-        self._invalid_text = ('Invalid data type / too many files. Accepted file extensions are:\n' + 
+        self._invalid_text = ('Invalid data type / too many files.\nAccepted file extensions are:\n' + 
                                 ' | '.join(core.SUPPORTED_FILE_TYPES))
 
         self.setText(self._default_text)
+        self.setWordWrap(True)
         self.setAlignment(Qt.AlignCenter)
         self.setAcceptDrops(True)
 
@@ -102,20 +113,39 @@ class FileDropArea(QtWidgets.QLabel):
 class VisualizerArea(QtWidgets.QWidget):
     """The 3D visualizer area for displaying vector data.
 
+    Attributes:
+    - selected_scaling_method: The selected method used to scale vectors.
+    - selected_scale_modifier: The selected value used to multiply all vector lengths.
+    - selected_craft_mesh: The name of the selected craft mesh.
+    
     Private Attributes:
     - _main_mesh: The craft mesh currently displayed on the visualizer.
     - _drawn_actors: The actors that are currently displayed on the visualizer.
+    - _craft_model: The mesh that has been drawn for the craft. None if not yet drawn.
+    - _current_vectors: The vectors currently drawn to the visualizer.
     """
+    selected_scaling_method: str
+    selected_scale_modifier: float
+    selected_craft_mesh: str
+
     _main_mesh: pv.DataObject | None
     _drawn_actors: list[Any]
+    _craft_model: pv.Actor | None
+    _current_vectors: list[core.data_processor.DataVector]
 
     def __init__(self) -> None:
         """Initializes the visualizer area.
         """
         super().__init__()
+
+        self.selected_scaling_method = ui.DEFAULT_VECTOR_SCALING_METHOD
+        self.selected_scale_modifier = ui.DEFAULT_OVERALL_SCALE
+        self.selected_craft_mesh = ui.DEFAULT_CRAFT_MODEL
         
         self._main_mesh = None
         self._drawn_actors = []
+        self._craft_model = None
+        self._current_vectors = []
 
         self.main_layout = QtWidgets.QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -125,7 +155,7 @@ class VisualizerArea(QtWidgets.QWidget):
 
         self.main_layout.addWidget(self.plotter.interactor)
 
-        self._draw_craft_model()
+        self.draw_craft_model()
         self.plotter.add_axes()
         self.plotter.set_background("white")
     
@@ -141,14 +171,14 @@ class VisualizerArea(QtWidgets.QWidget):
         vector = np.array(vector_value)
         length = float(np.linalg.norm(vector))
 
-        if length < ui.VECTOR_LENGTH_THRESHOLD:
+        if length < ui.VECTOR_LENGTH_THRESHOLD or self.selected_scale_modifier == 0:
             return
 
         direction = vector / length
 
         # Add ability to process vector length so that longer and shorter vectors can be
         # viewed at the same time
-        corrected_length = ui.VECTOR_SCALING_METHODS[ui.SELECTED_VECTOR_SCALING_METHOD](length) * ui.OVERALL_SCALE
+        corrected_length = ui.VECTOR_SCALING_METHODS[self.selected_scaling_method](length) * self.selected_scale_modifier
         corrected_vector = direction * corrected_length
 
         # Because pyvista is stupid and just scales the entire arrow to the magnitute
@@ -169,7 +199,15 @@ class VisualizerArea(QtWidgets.QWidget):
         )
 
         if colour:
-            arrow_actor = self.plotter.add_mesh(vector_arrow_mesh, color=colour, reset_camera=False, render=False)
+            rgb_colour = colour[0:3]
+            alpha_value = colour[3] / 255.0 if len(colour) == 4 else 1.0
+
+            arrow_actor = self.plotter.add_mesh(vector_arrow_mesh, 
+                                                color=rgb_colour, 
+                                                opacity=alpha_value,
+                                                reset_camera=False, 
+                                                render=False
+                                                )
             self._drawn_actors.append(arrow_actor)
 
             label_actor = self.plotter.add_point_labels(
@@ -199,20 +237,46 @@ class VisualizerArea(QtWidgets.QWidget):
         
         self._drawn_actors.clear()
     
-    def _draw_craft_model(self) -> None:
-        """Draws the craft model at the origin.
+    def draw_craft_model(self) -> None:
+        """Draws and refreshes the craft model at the origin.
         """
-        craft_model = ui.SELECTED_CRAFT_MODEL
-        craft_mesh = pv.read('./assets/models/' + craft_model + '.stl')
-        self._craft_model = self.plotter.add_mesh(craft_mesh, style='wireframe', line_width=2)
+        if self._craft_model:
+            self.plotter.remove_actor(self._craft_model, render=False)
+        craft_model = self.selected_craft_mesh
+        craft_mesh = pv.read('./assets/models/' + craft_model)
+        self._craft_model = self.plotter.add_mesh(craft_mesh, style='wireframe', line_width=2, render=False)
+        self.plotter.render()
 
     def update_vector_display(self, vectors: list[core.data_processor.DataVector]) -> None:
         """Erases all vectors already drawn on the display and replaces them with <vectors>.
         """
         self._clear_drawn_actors()
+        self._current_vectors = vectors
         self._draw_labeled_origin_vectors(vectors)
         # Set to manually render all at once to eliminate flickering.
         self.plotter.render()
+
+    def refresh_vector_display(self) -> None:
+        """Erases all vectors already drawn and draws them again with updated values.
+        For use if <self.selected_scaling_method> or <self.selected_scale_modifier> are updated.
+        """
+        self.update_vector_display(self._current_vectors)
+
+    def update_craft_orientation(self, orientation: tuple[float, float, float]) -> None:
+            """Updates the absolute rotation of the craft mesh.
+            """
+            if self._craft_model is None:
+                return
+
+            # Map the flight dynamics terms to 3D Cartesian axes.
+            # Pitch = X, Yaw = Y, Roll = Z
+            yaw, roll, pitch = orientation
+
+            # (pitch yaw roll)
+            # TODO Yaw, roll, and pitch are not properly set here. Figure out why. May be a problem on the data recorder side.
+            self._craft_model.orientation = (pitch, yaw, roll)
+
+            self.plotter.render()
 
 class ScrubberBar(QtWidgets.QWidget):
     """A zone to control the playback and scrubbing of flight data visualization.
@@ -381,3 +445,167 @@ class ScrubberBar(QtWidgets.QWidget):
         # Update playback bar if needed.
         if index_changed:
             self.playback_slider.setValue(self._playback_index)
+
+class SettingsWidget(QtWidgets.QWidget):
+    """A zone for editing settings related to the playback of data.
+    
+    Private Attributes:
+    - _craft_mesh_filenames: List of file names in assets/models, for use in communicating 
+                    with the visualizer.
+    - _scaling_methods: List of available scaling methods from ui/__init__, for use in
+                    communicating with the visualizer.
+    """
+    _craft_mesh_filenames: list[str]
+    _scaling_methods: list[str]
+
+    scaling_method_updated = pyqtSignal(str)
+    scale_modifier_updated = pyqtSignal(float)
+    craft_mesh_updated = pyqtSignal(str)
+
+    def __init__(self) -> None:
+        """Initializes the settings widget.
+        """
+        super().__init__()
+
+        main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(main_layout)
+
+        main_layout.addWidget(create_horizontal_separator())
+
+        scaling_method_label = QtWidgets.QLabel("Scaling Method")
+        self._scaling_methods = []
+        self.scaling_method_dropdown = QtWidgets.QComboBox()
+        self.scaling_method_dropdown.addItems(self._get_available_scaling_methods())
+        self.scaling_method_dropdown.currentIndexChanged.connect(self._on_scaling_method_update)
+        main_layout.addWidget(scaling_method_label)
+        main_layout.addWidget(self.scaling_method_dropdown)
+
+        main_layout.addWidget(create_horizontal_separator())
+
+        scale_modifier_label = QtWidgets.QLabel("Scale Modifier")
+        main_layout.addWidget(scale_modifier_label)
+
+        self.scale_modifier_spinbox = QtWidgets.QDoubleSpinBox()
+        self.scale_modifier_spinbox.setMinimum(0)
+        self.scale_modifier_spinbox.setValue(0.5)
+        self.scale_modifier_spinbox.setSingleStep(0.1)
+        self.scale_modifier_spinbox.valueChanged.connect(self._on_scale_modifier_update)
+        main_layout.addWidget(self.scale_modifier_spinbox)
+
+        main_layout.addWidget(create_horizontal_separator())
+
+        craft_mesh_label = QtWidgets.QLabel("Craft Mesh")
+        self._craft_mesh_filenames = []
+        self.craft_mesh_dropdown = QtWidgets.QComboBox()
+        self.craft_mesh_dropdown.addItems(self._get_available_craft_meshes())
+        self.craft_mesh_dropdown.currentIndexChanged.connect(self._on_craft_mesh_update)
+        main_layout.addWidget(craft_mesh_label)
+        main_layout.addWidget(self.craft_mesh_dropdown)
+
+        main_layout.addWidget(create_horizontal_separator())
+    
+    def _get_available_scaling_methods(self) -> list[str]:
+        """Returns a list of scaling methods available in <ui.VECTOR_SCALING_METHODS> formatted in title case.
+        Sets <self._scaling_methods> to the original strings for the scaling methods.
+        """
+        self._scaling_methods = list(ui.VECTOR_SCALING_METHODS.keys())
+        return [method.replace('_', ' ').title() for method in self._scaling_methods]
+    
+    def _get_available_craft_meshes(self) -> list[str]:
+        """Returns a list of craft meshes available in assets/models formatted in title case. 
+        Sets <self._craft_mesh_filenames> to the file names retrieved from assets/models.
+        """
+        models_path = Path(__file__).resolve().parent.parent / 'assets' / 'models'
+        self._craft_mesh_filenames = [f.name for f in models_path.iterdir() if f.is_file()]
+        return [mesh_name.split('.')[0].replace('-', ' ').title() for mesh_name in self._craft_mesh_filenames]
+    
+    def _on_scaling_method_update(self, new_index: int) -> None:
+        """Handles a new scaling method being selected.
+        """
+        new_scaling_method = self._scaling_methods[new_index]
+        self.scaling_method_updated.emit(new_scaling_method)
+
+    def _on_scale_modifier_update(self, new_value: float) -> None:
+        """Handles a new scale modifier being selected.
+        """
+        self.scale_modifier_updated.emit(new_value)
+
+    def _on_craft_mesh_update(self, new_index: int) -> None:
+        """Handles a new craft mesh being selected.
+        """
+        new_craft_name = self._craft_mesh_filenames[new_index]
+        self.craft_mesh_updated.emit(new_craft_name)
+
+class ValueDisplayWidget(QtWidgets.QWidget):
+    """A widget for displaying values from the data file being played.
+    
+    Private Attributes:
+    - _loaded_datafile: The data file that has been loaded. None if not loaded.
+    - _variable_labels: A dict keying the variable labels currently displayed to their titles.
+    """
+    _loaded_datafile: core.data_processor.DataFile | None
+    _variable_labels: dict[QtWidgets.QLabel, str]
+
+    def __init__(self) -> None:
+        """Initializes a value display widget.
+        """
+        super().__init__()
+
+        self._loaded_datafile = None
+        self._variable_labels = {}
+
+        self.main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(self.main_layout)
+
+        self.main_label = QtWidgets.QLabel("No Data File Has Been Loaded")
+        self.main_layout.addWidget(self.main_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    def _process_data_value(self, value: Any) -> Any:
+        """Returns value rounded based on object type.
+        """
+        match value:
+            case float():
+                return round(value, ui.VALUE_DISPLAY_SINGLE_ROUND)
+            case tuple():
+                return tuple(round(x, ui.VALUE_DISPLAY_ORIENTATION_ROUND) 
+                             for x in value)
+            case _:
+                return value
+
+    def load_datafile(self, new_datafile: core.data_processor.DataFile) -> None:
+        """Sets <self._loaded_datafile> to <new_datafile> and refreshes the displayed labels to
+        the new variables.
+        """
+        self._loaded_datafile = new_datafile
+
+        first_time_index = self._loaded_datafile.get_time_indexes()[0]
+        new_values = self._loaded_datafile.get_values_at_index(first_time_index)
+        label_titles = self._loaded_datafile.get_variable_labels()
+        self.main_label.setText("Data Values")
+
+        # Unload previous labels.
+        for current_label in self._variable_labels.keys():
+            self.main_layout.removeWidget(current_label)
+        
+        self._variable_labels.clear()
+
+        # Check if there are any new values.
+        if new_values is not None and label_titles:
+            # Add in labels for the new datafile.
+            for label_title in label_titles:
+                new_label_value = self._process_data_value(new_values.loc[label_title])
+                new_label = QtWidgets.QLabel(f"{label_title}: {new_label_value}")
+                self.main_layout.addWidget(new_label)
+                self._variable_labels[new_label] = label_title
+
+    def update_value_labels(self, new_time_index: float) -> None:
+        """Updates the displayed variable labels to the new time index using <self._loaded_datafile>.
+        """
+        new_values = self._loaded_datafile.get_values_at_index(new_time_index) if self._loaded_datafile else None
+
+        # Check if there are any new values.
+        if new_values is not None and self._variable_labels:
+            # Add in labels for the new datafile.
+            for label_widget, label_title in self._variable_labels.items():
+                new_label_value = self._process_data_value(new_values.loc[label_title])
+                label_widget.setText(f"{label_title}: {new_label_value}")
