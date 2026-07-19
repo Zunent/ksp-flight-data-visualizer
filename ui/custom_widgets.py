@@ -165,6 +165,8 @@ class VisualizerArea(QtWidgets.QWidget):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.main_layout)
 
+        self.setMinimumHeight(600)
+
         self.plotter = QtInteractor()
 
         self.main_layout.addWidget(self.plotter.interactor)
@@ -323,6 +325,8 @@ class ScrubberBar(QtWidgets.QWidget):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
         self.setLayout(self.main_layout)
+
+        self.setMinimumWidth(600)
 
         # Rewind button to jump back to start of data playback.
         self.rewind_button = QtWidgets.QPushButton()
