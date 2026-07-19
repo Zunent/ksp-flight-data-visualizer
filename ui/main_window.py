@@ -24,6 +24,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.left_layout = QtWidgets.QVBoxLayout()
         self.left_widget = QtWidgets.QWidget()
         self.left_widget.setLayout(self.left_layout)
+        self.left_widget.setObjectName("leftPanel")
         self.main_layout.addWidget(self.left_widget, stretch=7)
 
         self.visualizer = cw.VisualizerArea()
@@ -38,10 +39,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.right_widget.setWidgetResizable(True)
         self.right_widget.setMinimumWidth(450)
         self.right_widget.setMaximumWidth(600)
+        self.right_widget.setObjectName("rightScrollArea")
 
         self.right_content_widget = QtWidgets.QWidget()
         self.right_layout = QtWidgets.QVBoxLayout()
         self.right_content_widget.setLayout(self.right_layout)
+        self.right_content_widget.setObjectName("rightPanel")
 
         self.right_widget.setWidget(self.right_content_widget)
         self.main_layout.addWidget(self.right_widget, stretch=3)
