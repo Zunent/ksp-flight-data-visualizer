@@ -34,10 +34,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playback_control.playback_updated.connect(self._on_playback_update)
         self.left_layout.addWidget(self.playback_control)
 
-        self.right_layout = QtWidgets.QVBoxLayout()
+
+        # Set up dynamic scroll bar on right side (scroll bar appears and disappears as needed)
         self.right_widget = QtWidgets.QScrollArea()
         self.right_widget.setWidgetResizable(True)
-        self.right_widget.setLayout(self.right_layout)
+
+        self.right_content_widget = QtWidgets.QWidget()
+        self.right_layout = QtWidgets.QVBoxLayout()
+        self.right_content_widget.setLayout(self.right_layout)
+
+        self.right_widget.setWidget(self.right_content_widget)
         self.main_layout.addWidget(self.right_widget)
 
         self.value_display = cw.ValueDisplayWidget()
