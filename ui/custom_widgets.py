@@ -541,10 +541,10 @@ class ValueDisplayWidget(QtWidgets.QWidget):
     
     Private Attributes:
     - _loaded_datafile: The data file that has been loaded. None if not loaded.
-    - _variable_labels: A list containing the variable labels currently displayed.
+    - _variable_labels: A dict keying the variable labels currently displayed to their titles.
     """
     _loaded_datafile: core.data_processor.DataFile | None
-    _variable_labels: list[QtWidgets.QLabel]
+    _variable_labels: dict[QtWidgets.QLabel, str]
 
     def __init__(self) -> None:
         """Initializes a value display widget.
@@ -552,21 +552,60 @@ class ValueDisplayWidget(QtWidgets.QWidget):
         super().__init__()
 
         self._loaded_datafile = None
-        self._variable_labels = []
+        self._variable_labels = {}
 
-        main_layout = QtWidgets.QVBoxLayout()
-        self.setLayout(main_layout)
+        self.main_layout = QtWidgets.QVBoxLayout()
+        self.setLayout(self.main_layout)
 
         self.main_label = QtWidgets.QLabel("No Data File Has Been Loaded")
-        main_layout.addWidget(self.main_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(self.main_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    def _process_data_value(self, value: Any) -> Any:
+        """Returns value rounded based on object type.
+        """
+        match value:
+            case float():
+                return round(value, ui.VALUE_DISPLAY_SINGLE_ROUND)
+            case tuple():
+                return tuple(round(x, ui.VALUE_DISPLAY_ORIENTATION_ROUND) 
+                             for x in value)
+            case _:
+                return value
 
     def load_datafile(self, new_datafile: core.data_processor.DataFile) -> None:
         """Sets <self._loaded_datafile> to <new_datafile> and refreshes the displayed labels to
         the new variables.
         """
-        pass
+        self._loaded_datafile = new_datafile
+
+        first_time_index = self._loaded_datafile.get_time_indexes()[0]
+        new_values = self._loaded_datafile.get_values_at_index(first_time_index)
+        label_titles = self._loaded_datafile.get_variable_labels()
+        self.main_label.setText("Data Values")
+
+        # Unload previous labels.
+        for current_label in self._variable_labels.keys():
+            self.main_layout.removeWidget(current_label)
+        
+        self._variable_labels.clear()
+
+        # Check if there are any new values.
+        if new_values is not None and label_titles:
+            # Add in labels for the new datafile.
+            for label_title in label_titles:
+                new_label_value = self._process_data_value(new_values.loc[label_title])
+                new_label = QtWidgets.QLabel(f"{label_title}: {new_label_value}")
+                self.main_layout.addWidget(new_label)
+                self._variable_labels[new_label] = label_title
 
     def update_value_labels(self, new_time_index: float) -> None:
         """Updates the displayed variable labels to the new time index using <self._loaded_datafile>.
         """
-        pass
+        new_values = self._loaded_datafile.get_values_at_index(new_time_index) if self._loaded_datafile else None
+
+        # Check if there are any new values.
+        if new_values is not None and self._variable_labels:
+            # Add in labels for the new datafile.
+            for label_widget, label_title in self._variable_labels.items():
+                new_label_value = self._process_data_value(new_values.loc[label_title])
+                label_widget.setText(f"{label_title}: {new_label_value}")

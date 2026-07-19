@@ -177,6 +177,15 @@ class DataFile():
         """
         return self._processed_dataframe.columns.tolist()
     
+    def get_values_at_index(self, time_index: float) -> pd.Series | None:
+        """Returns a pandas series representing the values and labels at a specific time index
+        if the time index is valid, otherwise returns None.
+        """
+        try:
+            return self._processed_dataframe.loc[time_index] #type: ignore
+        except KeyError:
+            return None
+    
     def get_vectors_at_index(self, time_index: float) -> list[DataVector]:
         """Returns a list of vectors at row <time_index> of <self._processed_dataframe> if it is a valid index.
         Otherwise returns an empty list.
