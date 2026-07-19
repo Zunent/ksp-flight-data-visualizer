@@ -63,7 +63,7 @@ class FileDropArea(QtWidgets.QLabel):
     def heightForWidth(self, a0: int) -> int:
         """Returns the preferred height for a given width to maintain a 1:1 square aspect ratio.
         """
-        return a0
+        return round(a0 * (2/5))
     
     def dragEnterEvent(self, a0: QDragEnterEvent) -> None:
         """Triggered when user's cursor enters this widget's boundary while holding something.
