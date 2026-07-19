@@ -326,6 +326,8 @@ class ScrubberBar(QtWidgets.QWidget):
         self.main_layout.setSpacing(0)
         self.setLayout(self.main_layout)
 
+        self.setObjectName("scrubberBar")
+
         self.setMinimumWidth(600)
 
         self.play_icon = QIcon("assets/icons/play.svg")
@@ -336,6 +338,7 @@ class ScrubberBar(QtWidgets.QWidget):
         self.rewind_button = QtWidgets.QPushButton()
         self.rewind_button.setIcon(self.rewind_icon)
         self.rewind_button.pressed.connect(self._on_rewind_press)
+        self.rewind_button.setObjectName("rewindButton")
         self.main_layout.addWidget(self.rewind_button)
 
         # Play button to begin regular playback of data.
@@ -344,6 +347,7 @@ class ScrubberBar(QtWidgets.QWidget):
         self.play_button.setChecked(False)
         self.play_button.setIcon(self.play_icon)
         self.play_button.toggled.connect(self._on_toggle_pause)
+        self.play_button.setObjectName("playButton")
         self.main_layout.addWidget(self.play_button)
         # Default is paused.
         self._is_paused = True
@@ -356,11 +360,13 @@ class ScrubberBar(QtWidgets.QWidget):
         self.playback_slider.valueChanged.connect(self._on_playback_location_update)
         self.playback_slider.sliderPressed.connect(self._on_playback_bar_pressed)
         self.playback_slider.sliderReleased.connect(self._on_playback_bar_released)
+        self.playback_slider.setObjectName("playbackSlider")
         self.main_layout.addWidget(self.playback_slider)
 
         # Label to indicate data index.
         self.playback_position_indicator = QtWidgets.QLabel()
         self.playback_position_indicator.setText(str(self.playback_slider.value()))
+        self.playback_position_indicator.setObjectName("playbackPositionIndicator")
         self.main_layout.addWidget(self.playback_position_indicator)
 
         # No data loaded by default.
@@ -496,22 +502,27 @@ class SettingsWidget(QtWidgets.QWidget):
         main_layout = QtWidgets.QVBoxLayout()
         self.setLayout(main_layout)
 
+        self.setObjectName("settingsArea")
+
         size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         self.setSizePolicy(size_policy)
 
         main_layout.addWidget(create_horizontal_separator())
 
         scaling_method_label = QtWidgets.QLabel("Scaling Method")
+        scaling_method_label.setObjectName("settingsLabel")
         self._scaling_methods = []
         self.scaling_method_dropdown = QtWidgets.QComboBox()
         self.scaling_method_dropdown.addItems(self._get_available_scaling_methods())
         self.scaling_method_dropdown.currentIndexChanged.connect(self._on_scaling_method_update)
+        self.scaling_method_dropdown.setObjectName("settingsDropdown")
         main_layout.addWidget(scaling_method_label)
         main_layout.addWidget(self.scaling_method_dropdown)
 
         main_layout.addWidget(create_horizontal_separator())
 
         scale_modifier_label = QtWidgets.QLabel("Scale Modifier")
+        scale_modifier_label.setObjectName("settingsLabel")
         main_layout.addWidget(scale_modifier_label)
 
         self.scale_modifier_spinbox = QtWidgets.QDoubleSpinBox()
@@ -519,15 +530,18 @@ class SettingsWidget(QtWidgets.QWidget):
         self.scale_modifier_spinbox.setValue(0.5)
         self.scale_modifier_spinbox.setSingleStep(0.1)
         self.scale_modifier_spinbox.valueChanged.connect(self._on_scale_modifier_update)
+        self.scale_modifier_spinbox.setObjectName("settingsSpinbox")
         main_layout.addWidget(self.scale_modifier_spinbox)
 
         main_layout.addWidget(create_horizontal_separator())
 
         craft_mesh_label = QtWidgets.QLabel("Craft Mesh")
+        craft_mesh_label.setObjectName("settingsLabel")
         self._craft_mesh_filenames = []
         self.craft_mesh_dropdown = QtWidgets.QComboBox()
         self.craft_mesh_dropdown.addItems(self._get_available_craft_meshes())
         self.craft_mesh_dropdown.currentIndexChanged.connect(self._on_craft_mesh_update)
+        self.craft_mesh_dropdown.setObjectName("settingsDropdown")
         main_layout.addWidget(craft_mesh_label)
         main_layout.addWidget(self.craft_mesh_dropdown)
 
@@ -590,6 +604,7 @@ class ValueDisplayWidget(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
 
         self.main_label = QtWidgets.QLabel("No Data File Has Been Loaded")
+        self.main_label.setObjectName("titleLabel")
         self.main_layout.addWidget(self.main_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
     def _process_data_value(self, value: Any) -> Any:
@@ -627,6 +642,7 @@ class ValueDisplayWidget(QtWidgets.QWidget):
             for label_title in label_titles:
                 new_label_value = self._process_data_value(new_values.loc[label_title])
                 new_label = QtWidgets.QLabel(f"{label_title}: {new_label_value}")
+                new_label.setObjectName("valueLabel")
                 self.main_layout.addWidget(new_label)
                 self._variable_labels[new_label] = label_title
 
