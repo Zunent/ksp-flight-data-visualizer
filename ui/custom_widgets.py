@@ -365,7 +365,7 @@ class ScrubberBar(QtWidgets.QWidget):
 
         # Label to indicate data index.
         self.playback_position_indicator = QtWidgets.QLabel()
-        self.playback_position_indicator.setText(str(self.playback_slider.value()))
+        self.playback_position_indicator.setText(f"t+{self.playback_slider.value()}s")
         self.playback_position_indicator.setObjectName("playbackPositionIndicator")
         self.main_layout.addWidget(self.playback_position_indicator)
 
@@ -425,16 +425,16 @@ class ScrubberBar(QtWidgets.QWidget):
         """
         self.play_button.setChecked(False)
         self.playback_slider.setValue(0)
-        self._playback_time_offset = 0.0
+        self._playback_time_offset = self._time_indexes[0] if self._time_indexes else 0.0
         self._playback_index = 0
     
     def _on_playback_location_update(self, new_value: int) -> None:
         """Triggered when the playback slider's position is updated.
         """
         if not self._loaded_data:
-            self.playback_position_indicator.setText(str(new_value))
+            self.playback_position_indicator.setText(f"t+{new_value}s")
         else:
-            self.playback_position_indicator.setText(str(round(self._time_indexes[new_value], 1)))
+            self.playback_position_indicator.setText(f"t+{round(self._time_indexes[new_value], 1)}s")
             self.playback_updated.emit(self._time_indexes[new_value])
     
     def _on_playback_bar_pressed(self) -> None:
@@ -623,12 +623,16 @@ class ValueDisplayWidget(QtWidgets.QWidget):
         """Sets <self._loaded_datafile> to <new_datafile> and refreshes the displayed labels to
         the new variables.
         """
+        if self._loaded_datafile is None:
+            self.main_label.setText("Data Values")
+            self.main_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            self.main_layout.setAlignment(Qt.AlignTop)
+        
         self._loaded_datafile = new_datafile
 
         first_time_index = self._loaded_datafile.get_time_indexes()[0]
         new_values = self._loaded_datafile.get_values_at_index(first_time_index)
         label_titles = self._loaded_datafile.get_variable_labels()
-        self.main_label.setText("Data Values")
 
         # Unload previous labels.
         for current_label in self._variable_labels.keys():
