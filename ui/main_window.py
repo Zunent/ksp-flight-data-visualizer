@@ -12,7 +12,6 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Flight Data Visualizer")
-        self.resize(1000, 600)
 
         self.main_widget = QtWidgets.QWidget()
         self.setCentralWidget(self.main_widget)
