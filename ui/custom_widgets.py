@@ -37,6 +37,10 @@ class FileDropArea(QtWidgets.QLabel):
         self._invalid_text = ('Invalid data type / too many files.\nAccepted file extensions are:\n' + 
                                 ' | '.join(core.SUPPORTED_FILE_TYPES))
 
+        size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        size_policy.setHeightForWidth(True)
+        self.setSizePolicy(size_policy)
+
         self.setText(self._default_text)
         self.setWordWrap(True)
         self.setAlignment(Qt.AlignCenter)
@@ -50,6 +54,16 @@ class FileDropArea(QtWidgets.QLabel):
         """
         self.style().unpolish(self)
         self.style().polish(self)
+
+    def hasHeightForWidth(self) -> bool:
+        """Indicates to the layout manager that this widget's height depends on its width.
+        """
+        return True
+
+    def heightForWidth(self, a0: int) -> int:
+        """Returns the preferred height for a given width to maintain a 1:1 square aspect ratio.
+        """
+        return a0
     
     def dragEnterEvent(self, a0: QDragEnterEvent) -> None:
         """Triggered when user's cursor enters this widget's boundary while holding something.
