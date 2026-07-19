@@ -35,7 +35,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.left_layout.addWidget(self.playback_control)
 
         self.right_layout = QtWidgets.QVBoxLayout()
-        self.right_widget = QtWidgets.QWidget()
+        self.right_widget = QtWidgets.QScrollArea()
+        self.right_widget.setWidgetResizable(True)
         self.right_widget.setLayout(self.right_layout)
         self.main_layout.addWidget(self.right_widget)
 
