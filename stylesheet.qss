@@ -10,3 +10,46 @@ QWidget {
     margin-top: 14px;
     margin-bottom: 14px;
 }
+
+#rewindButton,
+#playButton,
+#settingsDropdown,
+#settingsSpinbox {
+    border: none;
+    background-color: #1e2233;
+    border-radius: 0px;
+}
+
+#rewindButton:hover,
+#playButton:hover,
+#settingsDropdown:hover,
+#settingsSpinbox:hover {
+    background-color: #2c324a;
+}
+
+#rewindButton:pressed,
+#playbutton:pressed,
+#settingsDropdown:pressed,
+#settingsSpinbox:pressed {
+    background-color: #121523;
+}
+
+#rewindButton,
+#playButton {
+    width: 26px;
+    height: 26px;
+    padding: 4px;
+}
+
+#settingsDropdown::drop-down {
+    border: none;
+    width: 26px;
+}
+
+#settingsDropdown QAbstractItemView {
+    background-color: #121523;
+    color: white;
+    border: none;
+    selection-background-color: #1e2233;
+    selection-color: white;
+}
