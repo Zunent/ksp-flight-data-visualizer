@@ -18,7 +18,7 @@ def create_horizontal_separator() -> QtWidgets.QFrame:
         """
         bar = QtWidgets.QFrame()
         bar.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-        bar.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        bar.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
         bar.setObjectName('horizontalBar')
         return bar
 

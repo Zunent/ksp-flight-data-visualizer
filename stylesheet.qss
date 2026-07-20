@@ -1,0 +1,12 @@
+QWidget {
+    font-family: "Chivo Mono";
+    font-size: 22px;
+    background-color: #030717;
+    color: white;
+}
+
+#horizontalBar {
+    background-color: white;
+    margin-top: 14px;
+    margin-bottom: 14px;
+}
