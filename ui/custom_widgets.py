@@ -34,7 +34,7 @@ class FileDropArea(QtWidgets.QLabel):
         
         self._default_text = 'Drag and drop a supported data file here.'
         self._valid_text = 'Drop data file for processing.'
-        self._invalid_text = ('Invalid data type / too many files.\nAccepted file extensions are:\n' + 
+        self._invalid_text = ('Invalid file type and/or amount. Accepted file extensions:\n' + 
                                 ' | '.join(core.SUPPORTED_FILE_TYPES))
 
         size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
@@ -63,7 +63,7 @@ class FileDropArea(QtWidgets.QLabel):
     def heightForWidth(self, a0: int) -> int:
         """Returns the preferred height for a given width to maintain a 1:1 square aspect ratio.
         """
-        return round(a0 * (2/5))
+        return round(a0 * (3/5))
     
     def dragEnterEvent(self, a0: QDragEnterEvent) -> None:
         """Triggered when user's cursor enters this widget's boundary while holding something.
