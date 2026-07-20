@@ -59,20 +59,46 @@ QWidget {
 }
 
 #playbackSlider::groove:horizontal {
-    border:none;
+    border: none;
     height: 8px;
     background: #1e2233;
 }
 
 #playbackSlider::sub-page:horizontal {
-    border:none;
+    border: none;
     background: #2c324a;
 }
 
 #playbackSlider::handle:horizontal {
-    background: #1e2233; 
+    background: #1e2233;
     border: none;
     width: 12px;
-    margin-top: -32px;    
+    margin-top: -32px;
     margin-bottom: -32px;
+}
+
+#dataDropZone {
+    margin: 16px;
+    border-radius: 0px;
+    border: none;
+    padding: 32px;
+    background-color: #1e2233;
+}
+
+#dataDropZone[hover_state="valid"] {
+    background: qlineargradient(spread: repeat,
+            x1: 0, y1: 0, x2: 0.1, y2: 0.05,
+            stop: 0 #084f0e,
+            stop: 0.49 #084f0e,
+            stop: 0.5 #08480d,
+            stop: 0.99 #08480d);
+}
+
+#dataDropZone[hover_state="invalid"] {
+    background: qlineargradient(spread: repeat,
+            x1: 0, y1: 0, x2: 0.1, y2: 0.05,
+            stop: 0 #4f0808,
+            stop: 0.49 #4f0808,
+            stop: 0.5 #610a0a,
+            stop: 0.99 #610a0a);
 }
