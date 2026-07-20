@@ -53,3 +53,26 @@ QWidget {
     selection-background-color: #1e2233;
     selection-color: white;
 }
+
+#playbackSlider {
+    min-height: 32px;
+}
+
+#playbackSlider::groove:horizontal {
+    border:none;
+    height: 8px;
+    background: #1e2233;
+}
+
+#playbackSlider::sub-page:horizontal {
+    border:none;
+    background: #2c324a;
+}
+
+#playbackSlider::handle:horizontal {
+    background: #1e2233; 
+    border: none;
+    width: 12px;
+    margin-top: -32px;    
+    margin-bottom: -32px;
+}
