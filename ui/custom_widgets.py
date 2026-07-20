@@ -323,7 +323,7 @@ class ScrubberBar(QtWidgets.QWidget):
 
         self.main_layout = QtWidgets.QHBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setSpacing(0)
+        self.main_layout.setSpacing(8)
         self.setLayout(self.main_layout)
 
         self.setObjectName("scrubberBar")
@@ -345,6 +345,7 @@ class ScrubberBar(QtWidgets.QWidget):
         self.play_button = QtWidgets.QPushButton()
         self.play_button.setCheckable(True)
         self.play_button.setChecked(False)
+        self.play_button.setDisabled(True)
         self.play_button.setIcon(self.play_icon)
         self.play_button.toggled.connect(self._on_toggle_pause)
         self.play_button.setObjectName("playButton")
@@ -392,6 +393,7 @@ class ScrubberBar(QtWidgets.QWidget):
         # Reset playback to the start.
         self._on_rewind_press()
         self.playback_slider.setRange(0, len(self._time_indexes) - 1)
+        self.play_button.setDisabled(False)
 
     def _on_toggle_pause(self, is_checked: bool) -> None:
         """Triggered when the pause/play button is pressed.
