@@ -18,6 +18,3 @@ This repository was primarily created as a hands-on project to learn the fundame
 - pandas
 - PyQt5
 - pyvista & pyvistaqt
-
-## Other
-This tool has been primarily designed for usage on Linux through the X11 display protocol.
