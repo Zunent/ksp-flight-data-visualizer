@@ -19,7 +19,9 @@ DEFAULT_OVERALL_SCALE = 0.5
 LABEL_SIZE = 20
 
 LABEL_TO_COLOUR = {
-    'aero': (129, 181, 230, 150)
+    'aero': (129, 181, 230, 150),
+    'dot': (230, 198, 71, 150),
+    'thrust': (109, 39, 214, 150)
 }
 
 DEFAULT_CRAFT_MODEL = 'diamond-1.stl'

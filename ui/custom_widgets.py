@@ -290,7 +290,7 @@ class VisualizerArea(QtWidgets.QWidget):
 
             # (pitch yaw roll)
             # TODO Yaw, roll, and pitch are not properly set here. Figure out why. May be a problem on the data recorder side.
-            self._craft_model.orientation = (pitch, yaw, roll)
+            self._craft_model.orientation = (-pitch, -yaw, -roll)
 
             self.plotter.render()
 
