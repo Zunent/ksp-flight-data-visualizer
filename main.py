@@ -1,5 +1,8 @@
 import os
-os.environ["QT_QPA_PLATFORM"] = "xcb"
+import sys
+
+if sys.platform.startswith("linux"):
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 import sys
 from PyQt5.QtWidgets import QApplication
