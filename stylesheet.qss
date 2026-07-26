@@ -24,13 +24,14 @@ QWidget {
 #playButton:hover,
 #settingsDropdown:hover,
 #settingsSpinbox:hover {
+    /* Qss has a weird bug(?) where I can't edit the line
+    edit field specifically, meaning this is all I can do. */
     background-color: #2c324a;
 }
 
 #rewindButton:pressed,
 #playbutton:pressed,
-#settingsDropdown:pressed,
-#settingsSpinbox:pressed {
+#settingsDropdown:pressed {
     background-color: #121523;
 }
 
@@ -39,6 +40,32 @@ QWidget {
     width: 26px;
     height: 26px;
     padding: 4px;
+}
+
+#settingsSpinbox::up-button,
+#settingsSpinbox::down-button {
+    border: none;
+    background-color: #1e2233;
+    width: 20px;
+}
+
+#settingsSpinbox::up-arrow {
+    image: url("assets/icons/up.svg");
+    width: 20px;
+    height: 15px;
+}
+
+#settingsSpinbox::down-arrow {
+    image: url("assets/icons/down.svg");
+    width: 20px;
+    height: 15px;
+}
+
+#settingsSpinbox::up-button:hover,
+#settingsSpinbox::down-button:hover,
+#settingsSpinbox::up-button:pressed,
+#settingsSpinbox::down-button:pressed {
+    background-color: #2c324a;
 }
 
 #settingsDropdown::drop-down {
