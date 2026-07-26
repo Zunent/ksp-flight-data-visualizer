@@ -1,6 +1,10 @@
 # KSP Flight Data Visualizer
 *A lightweight 3D visualizer for analyzing KSP flight data.*
 
+<p align="centre">
+  <img src="media/demo.gif" alt="App Demonstration" width="700"/>
+</p>
+
 ## Description
 Kerbal Space Program's kOS mod provides plenty of freedom in the way of changing the game the way is played, including data logging and processing. This data is essential for analyzing flight characteristics and control data, but visualizing it off numbers on a spreadsheet is difficult.
 
