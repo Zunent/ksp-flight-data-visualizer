@@ -12,7 +12,6 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Flight Data Visualizer")
-        self.resize(1000, 600)
 
         self.main_widget = QtWidgets.QWidget()
         self.setCentralWidget(self.main_widget)
@@ -25,7 +24,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.left_layout = QtWidgets.QVBoxLayout()
         self.left_widget = QtWidgets.QWidget()
         self.left_widget.setLayout(self.left_layout)
-        self.main_layout.addWidget(self.left_widget)
+        self.left_widget.setObjectName("leftPanel")
+        self.main_layout.addWidget(self.left_widget, stretch=7)
 
         self.visualizer = cw.VisualizerArea()
         self.left_layout.addWidget(self.visualizer)
@@ -34,14 +34,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playback_control.playback_updated.connect(self._on_playback_update)
         self.left_layout.addWidget(self.playback_control)
 
-        self.right_layout = QtWidgets.QVBoxLayout()
+        # Set up dynamic scroll bar on right side (scroll bar appears and disappears as needed)
         self.right_widget = QtWidgets.QScrollArea()
         self.right_widget.setWidgetResizable(True)
-        self.right_widget.setLayout(self.right_layout)
-        self.main_layout.addWidget(self.right_widget)
+        self.right_widget.setMinimumWidth(450)
+        self.right_widget.setMaximumWidth(600)
+        self.right_widget.setObjectName("rightScrollArea")
+
+        self.right_content_widget = QtWidgets.QWidget()
+        self.right_layout = QtWidgets.QVBoxLayout()
+        self.right_content_widget.setLayout(self.right_layout)
+        self.right_content_widget.setObjectName("rightPanel")
+
+        self.right_widget.setWidget(self.right_content_widget)
+        self.main_layout.addWidget(self.right_widget, stretch=3)
 
         self.value_display = cw.ValueDisplayWidget()
-        self.value_display.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         self.right_layout.addWidget(self.value_display)
 
         self.settings_menu = cw.SettingsWidget()

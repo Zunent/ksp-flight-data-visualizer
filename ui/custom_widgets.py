@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QTimer, QElapsedTimer, pyqtSignal
-from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
+from PyQt5.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent, QIcon
 
 import pyvista as pv
 from pyvistaqt import QtInteractor
@@ -18,7 +18,7 @@ def create_horizontal_separator() -> QtWidgets.QFrame:
         """
         bar = QtWidgets.QFrame()
         bar.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-        bar.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        bar.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
         bar.setObjectName('horizontalBar')
         return bar
 
@@ -34,8 +34,12 @@ class FileDropArea(QtWidgets.QLabel):
         
         self._default_text = 'Drag and drop a supported data file here.'
         self._valid_text = 'Drop data file for processing.'
-        self._invalid_text = ('Invalid data type / too many files.\nAccepted file extensions are:\n' + 
+        self._invalid_text = ('Invalid file type and/or amount. Accepted file extensions:\n' + 
                                 ' | '.join(core.SUPPORTED_FILE_TYPES))
+
+        size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        size_policy.setHeightForWidth(True)
+        self.setSizePolicy(size_policy)
 
         self.setText(self._default_text)
         self.setWordWrap(True)
@@ -50,6 +54,16 @@ class FileDropArea(QtWidgets.QLabel):
         """
         self.style().unpolish(self)
         self.style().polish(self)
+
+    def hasHeightForWidth(self) -> bool:
+        """Indicates to the layout manager that this widget's height depends on its width.
+        """
+        return True
+
+    def heightForWidth(self, a0: int) -> int:
+        """Returns the preferred height for a given width to maintain a 1:1 square aspect ratio.
+        """
+        return round(a0 * (3/5))
     
     def dragEnterEvent(self, a0: QDragEnterEvent) -> None:
         """Triggered when user's cursor enters this widget's boundary while holding something.
@@ -150,6 +164,8 @@ class VisualizerArea(QtWidgets.QWidget):
         self.main_layout = QtWidgets.QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.main_layout)
+
+        self.setMinimumHeight(600)
 
         self.plotter = QtInteractor()
 
@@ -274,7 +290,7 @@ class VisualizerArea(QtWidgets.QWidget):
 
             # (pitch yaw roll)
             # TODO Yaw, roll, and pitch are not properly set here. Figure out why. May be a problem on the data recorder side.
-            self._craft_model.orientation = (pitch, yaw, roll)
+            self._craft_model.orientation = (-pitch, -yaw, -roll)
 
             self.plotter.render()
 
@@ -307,19 +323,32 @@ class ScrubberBar(QtWidgets.QWidget):
 
         self.main_layout = QtWidgets.QHBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setSpacing(0)
+        self.main_layout.setSpacing(8)
         self.setLayout(self.main_layout)
+
+        self.setObjectName("scrubberBar")
+
+        self.setMinimumWidth(600)
+
+        self.play_icon = QIcon("assets/icons/play.svg")
+        self.pause_icon = QIcon("assets/icons/pause.svg")
+        self.rewind_icon = QIcon("assets/icons/rewind.svg")
 
         # Rewind button to jump back to start of data playback.
         self.rewind_button = QtWidgets.QPushButton()
+        self.rewind_button.setIcon(self.rewind_icon)
         self.rewind_button.pressed.connect(self._on_rewind_press)
+        self.rewind_button.setObjectName("rewindButton")
         self.main_layout.addWidget(self.rewind_button)
 
         # Play button to begin regular playback of data.
         self.play_button = QtWidgets.QPushButton()
         self.play_button.setCheckable(True)
         self.play_button.setChecked(False)
+        self.play_button.setDisabled(True)
+        self.play_button.setIcon(self.play_icon)
         self.play_button.toggled.connect(self._on_toggle_pause)
+        self.play_button.setObjectName("playButton")
         self.main_layout.addWidget(self.play_button)
         # Default is paused.
         self._is_paused = True
@@ -332,11 +361,13 @@ class ScrubberBar(QtWidgets.QWidget):
         self.playback_slider.valueChanged.connect(self._on_playback_location_update)
         self.playback_slider.sliderPressed.connect(self._on_playback_bar_pressed)
         self.playback_slider.sliderReleased.connect(self._on_playback_bar_released)
+        self.playback_slider.setObjectName("playbackSlider")
         self.main_layout.addWidget(self.playback_slider)
 
         # Label to indicate data index.
         self.playback_position_indicator = QtWidgets.QLabel()
-        self.playback_position_indicator.setText(str(self.playback_slider.value()))
+        self.playback_position_indicator.setText(f"t+{self.playback_slider.value()}s")
+        self.playback_position_indicator.setObjectName("playbackPositionIndicator")
         self.main_layout.addWidget(self.playback_position_indicator)
 
         # No data loaded by default.
@@ -362,6 +393,7 @@ class ScrubberBar(QtWidgets.QWidget):
         # Reset playback to the start.
         self._on_rewind_press()
         self.playback_slider.setRange(0, len(self._time_indexes) - 1)
+        self.play_button.setDisabled(False)
 
     def _on_toggle_pause(self, is_checked: bool) -> None:
         """Triggered when the pause/play button is pressed.
@@ -379,12 +411,14 @@ class ScrubberBar(QtWidgets.QWidget):
             self._is_paused = False
             self.elapsed_timer.start()
             self.poll_timer.start()
+            self.play_button.setIcon(self.pause_icon)
     
     def _try_pause(self) -> None:
         """Forces the play status to the paused state.
         """
         self._is_paused = True
         self.poll_timer.stop()
+        self.play_button.setIcon(self.play_icon)
         if self._loaded_data and self._time_indexes:
             self._playback_time_offset = self._time_indexes[self._playback_index]
     
@@ -393,16 +427,16 @@ class ScrubberBar(QtWidgets.QWidget):
         """
         self.play_button.setChecked(False)
         self.playback_slider.setValue(0)
-        self._playback_time_offset = 0.0
+        self._playback_time_offset = self._time_indexes[0] if self._time_indexes else 0.0
         self._playback_index = 0
     
     def _on_playback_location_update(self, new_value: int) -> None:
         """Triggered when the playback slider's position is updated.
         """
         if not self._loaded_data:
-            self.playback_position_indicator.setText(str(new_value))
+            self.playback_position_indicator.setText(f"t+{new_value}s")
         else:
-            self.playback_position_indicator.setText(str(round(self._time_indexes[new_value], 1)))
+            self.playback_position_indicator.setText(f"t+{round(self._time_indexes[new_value], 1)}s")
             self.playback_updated.emit(self._time_indexes[new_value])
     
     def _on_playback_bar_pressed(self) -> None:
@@ -470,19 +504,27 @@ class SettingsWidget(QtWidgets.QWidget):
         main_layout = QtWidgets.QVBoxLayout()
         self.setLayout(main_layout)
 
+        self.setObjectName("settingsArea")
+
+        size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        self.setSizePolicy(size_policy)
+
         main_layout.addWidget(create_horizontal_separator())
 
         scaling_method_label = QtWidgets.QLabel("Scaling Method")
+        scaling_method_label.setObjectName("settingsLabel")
         self._scaling_methods = []
         self.scaling_method_dropdown = QtWidgets.QComboBox()
         self.scaling_method_dropdown.addItems(self._get_available_scaling_methods())
         self.scaling_method_dropdown.currentIndexChanged.connect(self._on_scaling_method_update)
+        self.scaling_method_dropdown.setObjectName("settingsDropdown")
         main_layout.addWidget(scaling_method_label)
         main_layout.addWidget(self.scaling_method_dropdown)
 
         main_layout.addWidget(create_horizontal_separator())
 
         scale_modifier_label = QtWidgets.QLabel("Scale Modifier")
+        scale_modifier_label.setObjectName("settingsLabel")
         main_layout.addWidget(scale_modifier_label)
 
         self.scale_modifier_spinbox = QtWidgets.QDoubleSpinBox()
@@ -490,15 +532,18 @@ class SettingsWidget(QtWidgets.QWidget):
         self.scale_modifier_spinbox.setValue(0.5)
         self.scale_modifier_spinbox.setSingleStep(0.1)
         self.scale_modifier_spinbox.valueChanged.connect(self._on_scale_modifier_update)
+        self.scale_modifier_spinbox.setObjectName("settingsSpinbox")
         main_layout.addWidget(self.scale_modifier_spinbox)
 
         main_layout.addWidget(create_horizontal_separator())
 
         craft_mesh_label = QtWidgets.QLabel("Craft Mesh")
+        craft_mesh_label.setObjectName("settingsLabel")
         self._craft_mesh_filenames = []
         self.craft_mesh_dropdown = QtWidgets.QComboBox()
         self.craft_mesh_dropdown.addItems(self._get_available_craft_meshes())
         self.craft_mesh_dropdown.currentIndexChanged.connect(self._on_craft_mesh_update)
+        self.craft_mesh_dropdown.setObjectName("settingsDropdown")
         main_layout.addWidget(craft_mesh_label)
         main_layout.addWidget(self.craft_mesh_dropdown)
 
@@ -554,10 +599,14 @@ class ValueDisplayWidget(QtWidgets.QWidget):
         self._loaded_datafile = None
         self._variable_labels = {}
 
+        size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        self.setSizePolicy(size_policy)
+
         self.main_layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.main_layout)
 
         self.main_label = QtWidgets.QLabel("No Data File Has Been Loaded")
+        self.main_label.setObjectName("titleLabel")
         self.main_layout.addWidget(self.main_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
     def _process_data_value(self, value: Any) -> Any:
@@ -576,12 +625,16 @@ class ValueDisplayWidget(QtWidgets.QWidget):
         """Sets <self._loaded_datafile> to <new_datafile> and refreshes the displayed labels to
         the new variables.
         """
+        if self._loaded_datafile is None:
+            self.main_label.setText("Data Values")
+            self.main_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            self.main_layout.setAlignment(Qt.AlignTop)
+        
         self._loaded_datafile = new_datafile
 
         first_time_index = self._loaded_datafile.get_time_indexes()[0]
         new_values = self._loaded_datafile.get_values_at_index(first_time_index)
         label_titles = self._loaded_datafile.get_variable_labels()
-        self.main_label.setText("Data Values")
 
         # Unload previous labels.
         for current_label in self._variable_labels.keys():
@@ -595,6 +648,7 @@ class ValueDisplayWidget(QtWidgets.QWidget):
             for label_title in label_titles:
                 new_label_value = self._process_data_value(new_values.loc[label_title])
                 new_label = QtWidgets.QLabel(f"{label_title}: {new_label_value}")
+                new_label.setObjectName("valueLabel")
                 self.main_layout.addWidget(new_label)
                 self._variable_labels[new_label] = label_title
 
