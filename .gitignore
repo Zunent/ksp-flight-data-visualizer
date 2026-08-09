@@ -4,3 +4,8 @@
 # Compiled Bytecode
 __pycache__/
 .pyc
+
+# PyInstaller Files
+*.spec
+dist/
+build/
