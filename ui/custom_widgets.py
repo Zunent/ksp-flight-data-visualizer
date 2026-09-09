@@ -1,5 +1,6 @@
 import core
 import core.data_processor
+import core.path_resolver
 import os
 import ui
 import numpy as np
@@ -259,7 +260,8 @@ class VisualizerArea(QtWidgets.QWidget):
         if self._craft_model:
             self.plotter.remove_actor(self._craft_model, render=False)
         craft_model = self.selected_craft_mesh
-        craft_mesh = pv.read('./assets/models/' + craft_model)
+        craft_path = core.path_resolver.get_resource_path('./assets/models/' + craft_model)
+        craft_mesh = pv.read(craft_path)
         self._craft_model = self.plotter.add_mesh(craft_mesh, style='wireframe', line_width=2, render=False)
         self.plotter.render()
 
@@ -330,9 +332,13 @@ class ScrubberBar(QtWidgets.QWidget):
 
         self.setMinimumWidth(600)
 
-        self.play_icon = QIcon("assets/icons/play.svg")
-        self.pause_icon = QIcon("assets/icons/pause.svg")
-        self.rewind_icon = QIcon("assets/icons/rewind.svg")
+        play_path = core.path_resolver.get_resource_path("assets/icons/play.svg")
+        pause_path = core.path_resolver.get_resource_path("assets/icons/pause.svg")
+        rewind_path = core.path_resolver.get_resource_path("assets/icons/rewind.svg")
+
+        self.play_icon = QIcon(play_path)
+        self.pause_icon = QIcon(pause_path)
+        self.rewind_icon = QIcon(rewind_path)
 
         # Rewind button to jump back to start of data playback.
         self.rewind_button = QtWidgets.QPushButton()
